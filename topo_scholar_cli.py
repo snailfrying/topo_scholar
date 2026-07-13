@@ -88,6 +88,7 @@ def main() -> None:
     fetch.add_argument("--place-type", default="")
     fetch.add_argument("--limit", type=int, default=1)
     fetch.add_argument("--page-size", type=int, default=20)
+    fetch.add_argument("--max-pages", type=int, default=3)
     fetch.add_argument("--sleep", type=float, default=0.8)
 
     args = parser.parse_args()
@@ -171,6 +172,7 @@ def main() -> None:
                 place_type=args.place_type,
                 limit=args.limit,
                 page_size=args.page_size,
+                max_pages=args.max_pages,
                 sleep_seconds=args.sleep,
             )
         )

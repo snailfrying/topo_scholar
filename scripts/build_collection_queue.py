@@ -44,6 +44,13 @@ PRIORITY_BY_LEVEL = {
     "village": 90,
 }
 
+EXCLUDED_COLLECTION_NAMES = {
+    "市辖区",
+    "县",
+    "省直辖县级行政区划",
+    "自治区直辖县级行政区划",
+}
+
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -74,7 +81,7 @@ def build_queue(levels: list[str], overwrite: bool = False) -> list[dict[str, st
     """
 
     existing: dict[str, dict[str, str]] = {}
-    if QUEUE_CSV.exists() and not overwrite:
+    if QUEUE_CSV.exists():
         with QUEUE_CSV.open("r", encoding="utf-8", newline="") as f:
             for row in csv.DictReader(f):
                 existing[row["id"]] = row
@@ -82,11 +89,32 @@ def build_queue(levels: list[str], overwrite: bool = False) -> list[dict[str, st
     with sqlite3.connect(DB_PATH) as conn:
         rows = conn.execute(sql, levels).fetchall()
 
+    queue_rows: dict[str, dict[str, str]] = {} if overwrite else dict(existing)
     for place_id, code, name, full_name, level, province, city, county in rows:
-        qid = queue_id(place_id)
-        if qid in existing:
+        if name in EXCLUDED_COLLECTION_NAMES:
             continue
-        existing[qid] = {
+        qid = queue_id(place_id)
+        if qid in queue_rows and not overwrite:
+            continue
+        if qid in existing:
+            preserved = dict(existing[qid])
+            preserved.update(
+                {
+                    "place_id": place_id,
+                    "code": code,
+                    "name": name,
+                    "full_name": full_name,
+                    "level": level,
+                    "province": province,
+                    "city": city,
+                    "county": county,
+                    "priority": str(PRIORITY_BY_LEVEL.get(level, 100)),
+                    "updated_at": now,
+                }
+            )
+            queue_rows[qid] = preserved
+            continue
+        queue_rows[qid] = {
             "id": qid,
             "place_id": place_id,
             "code": code,
@@ -107,7 +135,7 @@ def build_queue(levels: list[str], overwrite: bool = False) -> list[dict[str, st
         }
 
     queue = sorted(
-        existing.values(),
+        queue_rows.values(),
         key=lambda row: (int(row["priority"]), row["level"], row["code"]),
     )
     QUEUE_CSV.parent.mkdir(parents=True, exist_ok=True)

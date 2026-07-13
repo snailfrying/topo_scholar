@@ -48,6 +48,7 @@
 
 - `data/processed/place_knowledge.csv`
 - `data/processed/collection_queue.csv`
+- `data/metadata/mca_candidate_audit.csv`
 
 用途：保存已经采集并标准化的地名由来样例，以及省/市/县三级优先采集队列。
 

@@ -56,7 +56,7 @@ def already_has_knowledge(place_id: str) -> bool:
     return count > 0
 
 
-def fetch_row(row: dict[str, str], sleep_seconds: float, dry_run: bool) -> tuple[str, str]:
+def fetch_row(row: dict[str, str], sleep_seconds: float, dry_run: bool, max_pages: int) -> tuple[str, str]:
     if already_has_knowledge(row["place_id"]):
         return "done", "already_has_knowledge"
     if dry_run:
@@ -70,7 +70,9 @@ def fetch_row(row: dict[str, str], sleep_seconds: float, dry_run: bool) -> tuple
         place_type=PLACE_TYPE_BY_LEVEL.get(row["level"], ""),
         limit=1,
         page_size=20,
+        max_pages=max_pages,
         sleep_seconds=sleep_seconds,
+        strict=True,
     )
     saved = payload.get("data", {}).get("saved", [])
     if saved:
@@ -84,6 +86,7 @@ def main() -> None:
     parser.add_argument("--max-items", type=int, default=5, help="Max pending rows to process")
     parser.add_argument("--levels", default="province,city,county", help="Comma-separated levels")
     parser.add_argument("--sleep", type=float, default=1.0, help="Delay after uncached network requests")
+    parser.add_argument("--max-pages", type=int, default=3, help="Max MCA search pages to inspect per place")
     parser.add_argument("--dry-run", action="store_true", help="Show items without fetching")
     parser.add_argument("--rebuild-queue", action="store_true", help="Rebuild queue before fetching")
     args = parser.parse_args()
@@ -103,7 +106,7 @@ def main() -> None:
             continue
 
         print(f"{row['status']} -> {row['name']} {row['full_name']} level={row['level']}")
-        status, error = fetch_row(row, args.sleep, args.dry_run)
+        status, error = fetch_row(row, args.sleep, args.dry_run, args.max_pages)
         row["status"] = status
         row["error"] = error
         row["attempt_count"] = str(int(row.get("attempt_count") or "0") + (0 if args.dry_run else 1))

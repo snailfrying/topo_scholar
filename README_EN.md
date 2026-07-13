@@ -17,14 +17,15 @@ TopoScholar is not just another administrative-division table. It aims to build 
 
 ## Current Data Size
 
-See `data/metadata/quality_report.json` and `docs/quality_assessment.md` for the latest validation report.
+Official origin, meaning, and history records have been collected for all 31 province-level administrative regions, 20 prefecture-level samples, Wuhan, and Nangao Village. See `data/metadata/quality_report.json` and `docs/quality_assessment.md` for the latest validation report.
 
 | Table | Count |
 |---|---:|
 | `places` | 665,276 |
 | `admin_edges` | 665,245 |
 | `place_aliases` | 2,981,225 |
-| `place_knowledge` | 3 |
+| `place_knowledge` | 53 |
+| `collection_queue` | 3,342 |
 
 By level:
 
@@ -149,7 +150,7 @@ See `docs/dataset_sources.md` for source details, licenses, and usage notes.
 - The five-level foundation is mainly based on 2023 statistical data and may not reflect the latest civil-affairs/geographical-name authority view.
 - `street/subdistrict` currently refers mainly to administrative subdistricts, not road/street names.
 - Hong Kong, Macao, and Taiwan are not included in the current five-level main table.
-- `place_knowledge` currently contains only a few examples; large-scale origin enrichment is still ongoing and batch scripts are intentionally rate-limited.
+- `place_knowledge` now contains official origin records for all 31 province-level administrative regions, 20 prefecture-level samples, Wuhan, and Nangao Village; large-scale origin enrichment is still ongoing and batch scripts are intentionally rate-limited.
 - The China National Geographical Names Database should be queried and cached responsibly. Avoid high-frequency scraping or unauthorized redistribution.
 
 ## Roadmap

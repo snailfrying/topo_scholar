@@ -54,6 +54,24 @@ KNOWLEDGE_FIELDS = [
     "updated_at",
 ]
 
+CANDIDATE_AUDIT_CSV = ROOT / "data" / "metadata" / "mca_candidate_audit.csv"
+CANDIDATE_AUDIT_FIELDS = [
+    "fetched_at",
+    "query_name",
+    "filter_province",
+    "filter_city",
+    "filter_county",
+    "filter_place_type",
+    "source_place_id",
+    "standard_name",
+    "place_type",
+    "province",
+    "city",
+    "county",
+    "score",
+    "selected",
+]
+
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -111,6 +129,19 @@ def search_mca(name: str, page: int, size: int, sleep_seconds: float) -> dict[st
         "https://dmfw.mca.gov.cn/search.html",
         sleep_seconds,
     )
+
+
+def search_mca_pages(name: str, max_pages: int, size: int, sleep_seconds: float) -> tuple[list[dict[str, Any]], int]:
+    records: list[dict[str, Any]] = []
+    total = 0
+    for page in range(1, max_pages + 1):
+        result = search_mca(name, page=page, size=size, sleep_seconds=sleep_seconds)
+        page_records = result.get("records") or []
+        total = int(result.get("total") or len(page_records) or total)
+        records.extend(page_records)
+        if not page_records or len(records) >= total:
+            break
+    return records, total
 
 
 def details_mca(source_place_id: str, sleep_seconds: float) -> dict[str, Any]:
@@ -307,6 +338,114 @@ def passes_filters(record: dict[str, Any], province: str, city: str, county: str
     return True
 
 
+def score_candidate(
+    record: dict[str, Any],
+    *,
+    name: str,
+    province: str = "",
+    city: str = "",
+    county: str = "",
+    place_type: str = "",
+) -> int:
+    score = 0
+    standard_name = record.get("standard_name") or ""
+    if standard_name == name:
+        score += 100
+    elif name and name in standard_name:
+        score += 20
+    else:
+        score -= 100
+
+    if place_type:
+        score += 60 if record.get("place_type") == place_type else -80
+    if province:
+        score += 40 if record.get("province_name") == province else -80
+    if city:
+        score += 25 if record.get("city_name") == city else -50
+    if county:
+        score += 25 if record.get("area_name") == county else -50
+
+    # Prefer administrative entities when caller is collecting administrative levels.
+    if place_type and "行政区" in place_type and "行政区" in (record.get("place_type") or ""):
+        score += 10
+    return score
+
+
+def rank_candidates(
+    records: list[dict[str, Any]],
+    *,
+    name: str,
+    province: str = "",
+    city: str = "",
+    county: str = "",
+    place_type: str = "",
+    strict: bool = True,
+) -> list[dict[str, Any]]:
+    ranked = []
+    for record in records:
+        score = score_candidate(
+            record,
+            name=name,
+            province=province,
+            city=city,
+            county=county,
+            place_type=place_type,
+        )
+        item = dict(record)
+        item["_score"] = score
+        if strict and not passes_filters(record, province, city, county, place_type):
+            continue
+        if strict and record.get("standard_name") != name:
+            continue
+        ranked.append(item)
+    ranked.sort(key=lambda row: row.get("_score", 0), reverse=True)
+    return ranked
+
+
+def append_candidate_audit(
+    *,
+    query_name: str,
+    province: str,
+    city: str,
+    county: str,
+    place_type: str,
+    candidates: list[dict[str, Any]],
+    selected_ids: set[str],
+) -> None:
+    existing: list[dict[str, str]] = []
+    if CANDIDATE_AUDIT_CSV.exists():
+        with CANDIDATE_AUDIT_CSV.open("r", encoding="utf-8", newline="") as f:
+            existing = list(csv.DictReader(f))
+
+    now = utc_now()
+    for record in candidates:
+        source_place_id = record.get("id") or ""
+        existing.append(
+            {
+                "fetched_at": now,
+                "query_name": query_name,
+                "filter_province": province,
+                "filter_city": city,
+                "filter_county": county,
+                "filter_place_type": place_type,
+                "source_place_id": source_place_id,
+                "standard_name": record.get("standard_name") or "",
+                "place_type": record.get("place_type") or "",
+                "province": record.get("province_name") or "",
+                "city": record.get("city_name") or "",
+                "county": record.get("area_name") or "",
+                "score": str(record.get("_score", "")),
+                "selected": "1" if source_place_id in selected_ids else "0",
+            }
+        )
+
+    CANDIDATE_AUDIT_CSV.parent.mkdir(parents=True, exist_ok=True)
+    with CANDIDATE_AUDIT_CSV.open("w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=CANDIDATE_AUDIT_FIELDS)
+        writer.writeheader()
+        writer.writerows(existing)
+
+
 def print_candidates(records: list[dict[str, Any]]) -> None:
     for index, record in enumerate(records, start=1):
         path = "/".join(
@@ -331,16 +470,21 @@ def fetch_and_save(
     place_type: str = "",
     limit: int = 5,
     page_size: int = 20,
+    max_pages: int = 3,
     sleep_seconds: float = 0.8,
     list_only: bool = False,
+    strict: bool = True,
 ) -> dict[str, Any]:
-    result = search_mca(name, page=1, size=page_size, sleep_seconds=sleep_seconds)
-    records = result.get("records") or []
-    filtered = [
-        record
-        for record in records
-        if passes_filters(record, province, city, county, place_type)
-    ]
+    records, total = search_mca_pages(name, max_pages=max_pages, size=page_size, sleep_seconds=sleep_seconds)
+    filtered = rank_candidates(
+        records,
+        name=name,
+        province=province,
+        city=city,
+        county=county,
+        place_type=place_type,
+        strict=strict,
+    )
 
     candidates = []
     for record in filtered[:limit]:
@@ -363,6 +507,7 @@ def fetch_and_save(
                 "city": record.get("city_name") or "",
                 "county": record.get("area_name") or "",
                 "path": path,
+                "score": record.get("_score", 0),
             }
         )
 
@@ -376,6 +521,16 @@ def fetch_and_save(
                 append_or_update_csv(row)
                 saved.append(row)
 
+    append_candidate_audit(
+        query_name=name,
+        province=province,
+        city=city,
+        county=county,
+        place_type=place_type,
+        candidates=filtered[: max(limit, 5)],
+        selected_ids={candidate["source_place_id"] for candidate in candidates},
+    )
+
     warnings = []
     if not filtered:
         warnings.append("国家地名信息库未找到符合过滤条件的候选")
@@ -385,7 +540,7 @@ def fetch_and_save(
     return {
         "ok": True,
         "data": {
-            "search_total": result.get("total", len(records)),
+            "search_total": total,
             "page_records": len(records),
             "filtered": len(filtered),
             "candidates": candidates,
@@ -405,8 +560,10 @@ def main() -> None:
     parser.add_argument("--place-type", default="", help="Filter by MCA place type, e.g. 地级行政区")
     parser.add_argument("--limit", type=int, default=5, help="Max details to fetch")
     parser.add_argument("--page-size", type=int, default=20, help="Search page size")
+    parser.add_argument("--max-pages", type=int, default=3, help="Max search pages to inspect")
     parser.add_argument("--sleep", type=float, default=0.8, help="Delay after uncached network requests")
     parser.add_argument("--list-only", action="store_true", help="Only list candidates, do not fetch details")
+    parser.add_argument("--loose", action="store_true", help="Allow non-exact candidates")
     args = parser.parse_args()
 
     payload = fetch_and_save(
@@ -417,8 +574,10 @@ def main() -> None:
         place_type=args.place_type,
         limit=args.limit,
         page_size=args.page_size,
+        max_pages=args.max_pages,
         sleep_seconds=args.sleep,
         list_only=args.list_only,
+        strict=not args.loose,
     )
 
     data = payload["data"]
