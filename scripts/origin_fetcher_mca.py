@@ -346,9 +346,15 @@ def append_or_update_csv(row: dict[str, str]) -> None:
 def passes_filters(record: dict[str, Any], province: str, city: str, county: str, place_type: str) -> bool:
     if province and record.get("province_name") != province:
         return False
-    if city and record.get("city_name") != city:
+    # In statistical data, districts of municipalities often have city="市辖区";
+    # in the geonames DB, the same county-level entity may appear as city_name=标准名.
+    if city and city != "市辖区" and record.get("city_name") != city:
         return False
-    if county and record.get("area_name") != county:
+    if county and county not in {
+        record.get("area_name"),
+        record.get("city_name"),
+        record.get("standard_name"),
+    }:
         return False
     if place_type and record.get("place_type") != place_type:
         return False
@@ -377,10 +383,14 @@ def score_candidate(
         score += 60 if record.get("place_type") == place_type else -80
     if province:
         score += 40 if record.get("province_name") == province else -80
-    if city:
+    if city and city != "市辖区":
         score += 25 if record.get("city_name") == city else -50
     if county:
-        score += 25 if record.get("area_name") == county else -50
+        score += 25 if county in {
+            record.get("area_name"),
+            record.get("city_name"),
+            record.get("standard_name"),
+        } else -50
 
     # Prefer administrative entities when caller is collecting administrative levels.
     if place_type and "行政区" in place_type and "行政区" in (record.get("place_type") or ""):

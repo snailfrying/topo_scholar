@@ -81,17 +81,28 @@ def fetch_row(row: dict[str, str], sleep_seconds: float, dry_run: bool, max_page
     return "failed", warnings or "no_saved_record"
 
 
+def should_process(row: dict[str, str], levels: set[str], max_attempts: int) -> bool:
+    if row["level"] not in levels or row["status"] not in {"pending", "failed"}:
+        return False
+    if row["status"] == "failed" and max_attempts > 0:
+        attempts = int(row.get("attempt_count") or "0")
+        return attempts < max_attempts
+    return True
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Batch fetch place origins from collection_queue.csv.")
     parser.add_argument("--max-items", type=int, default=5, help="Max pending rows to process")
     parser.add_argument("--levels", default="province,city,county", help="Comma-separated levels")
     parser.add_argument("--sleep", type=float, default=1.0, help="Delay after uncached network requests")
     parser.add_argument("--max-pages", type=int, default=3, help="Max MCA search pages to inspect per place")
+    parser.add_argument("--max-attempts", type=int, default=3, help="Skip failed rows after this many attempts; use 0 to retry without limit")
     parser.add_argument("--dry-run", action="store_true", help="Show items without fetching")
     parser.add_argument("--rebuild-queue", action="store_true", help="Rebuild queue before fetching")
     args = parser.parse_args()
 
     levels = [level.strip() for level in args.levels.split(",") if level.strip()]
+    level_set = set(levels)
     if args.rebuild_queue or not QUEUE_CSV.exists():
         build_queue(levels)
 
@@ -102,7 +113,7 @@ def main() -> None:
     for row in queue:
         if processed >= args.max_items:
             break
-        if row["level"] not in levels or row["status"] not in {"pending", "failed"}:
+        if not should_process(row, level_set, args.max_attempts):
             continue
 
         print(f"{row['status']} -> {row['name']} {row['full_name']} level={row['level']}")

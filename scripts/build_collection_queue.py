@@ -51,6 +51,19 @@ EXCLUDED_COLLECTION_NAMES = {
     "自治区直辖县级行政区划",
 }
 
+EXCLUDED_COLLECTION_KEYWORDS = {
+    "开发区",
+    "管理区",
+    "园区",
+    "示范区",
+}
+
+
+def should_collect_name(name: str) -> bool:
+    if name in EXCLUDED_COLLECTION_NAMES:
+        return False
+    return not any(keyword in name for keyword in EXCLUDED_COLLECTION_KEYWORDS)
+
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -91,7 +104,7 @@ def build_queue(levels: list[str], overwrite: bool = False) -> list[dict[str, st
 
     queue_rows: dict[str, dict[str, str]] = {} if overwrite else dict(existing)
     for place_id, code, name, full_name, level, province, city, county in rows:
-        if name in EXCLUDED_COLLECTION_NAMES:
+        if not should_collect_name(name):
             continue
         qid = queue_id(place_id)
         if qid in queue_rows and not overwrite:
