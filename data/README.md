@@ -11,6 +11,7 @@
 - `processed/places.csv`
 - `processed/admin_edges.csv`
 - `processed/topo_scholar.sqlite`
+- `processed/collection_queue.csv`
 
 这些文件是本地生成物，体积较大，不提交到普通 Git。仓库提交的是必要原始 CSV、脚本和小型知识表；首次运行 `topo_scholar_cli.py` 时会自动构建本地 SQLite。
 
@@ -18,6 +19,7 @@
 
 ```powershell
 python scripts\catalog_raw_data.py
+python scripts\build_collection_queue.py --levels province,city,county
 python scripts\build_places.py
 python scripts\build_sqlite.py
 python scripts\query_places.py 武汉市

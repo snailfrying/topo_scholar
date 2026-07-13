@@ -15,7 +15,8 @@
 | `places` | 665276 |
 | `admin_edges` | 665245 |
 | `place_aliases` | 2981225 |
-| `place_knowledge` | 2 |
+| `place_knowledge` | 3 |
+| `collection_queue` | 3351 |
 
 按层级统计：
 
@@ -86,7 +87,7 @@
 
 地名由来仍处于样例阶段：
 
-- 当前 `place_knowledge` 只有 2 条。
+- 当前 `place_knowledge` 只有 3 条，已验证武汉市、北京市和南高村的按需补齐链路。
 - 已验证国家地名信息库能返回由来、含义、历史沿革。
 - 已支持按需补齐并和本地基础地名关联。
 
@@ -106,7 +107,7 @@
 为了让其他用户可以直接 clone 后使用，同时避免 GitHub 大文件限制：
 
 - 上传必要原始 CSV 数据。
-- 上传小型知识表 `place_knowledge.csv`。
+- 上传小型知识表 `place_knowledge.csv` 和省/市/县三级采集队列 `collection_queue.csv`。
 - 上传构建脚本和自动 bootstrap 逻辑。
 - 不上传巨大生成物：`places.csv`、`admin_edges.csv`、`topo_scholar.sqlite`。
 - 用户 clone 后第一次运行 CLI 时，会自动构建本地 SQLite。

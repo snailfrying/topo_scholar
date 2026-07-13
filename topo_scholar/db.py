@@ -306,6 +306,47 @@ def search_knowledge(
     limit: int = 20,
     db_path: Path | str = DEFAULT_DB_PATH,
 ) -> dict[str, Any]:
+    rows: list[dict[str, Any]] = []
+    with connect(db_path) as conn:
+        try:
+            fts_clauses = ["place_knowledge_fts MATCH ?"]
+            fts_params: list[Any] = [keyword]
+            if province:
+                fts_clauses.append("k.province = ?")
+                fts_params.append(province)
+            if city:
+                fts_clauses.append("k.city = ?")
+                fts_params.append(city)
+            if county:
+                fts_clauses.append("k.county = ?")
+                fts_params.append(county)
+            fts_params.append(limit)
+            fts_sql = f"""
+                SELECT k.id, k.place_id, k.source_place_id, k.standard_name, k.province, k.city, k.county,
+                       k.place_type, k.origin, k.meaning, k.history, k.old_names, k.evidence_url,
+                       k.evidence_title, k.confidence, k.source, k.source_type, k.updated_at,
+                       p.code AS local_code, p.name AS local_name, p.full_name AS local_full_name,
+                       p.level AS local_level, p.type AS local_type,
+                       bm25(place_knowledge_fts) AS rank
+                FROM place_knowledge_fts
+                JOIN place_knowledge AS k ON k.rowid = place_knowledge_fts.rowid
+                LEFT JOIN places AS p ON p.id = k.place_id
+                WHERE {" AND ".join(fts_clauses)}
+                ORDER BY rank
+                LIMIT ?
+            """
+            rows = [row_to_dict(row) for row in conn.execute(fts_sql, fts_params)]
+        except sqlite3.OperationalError:
+            rows = []
+
+    if rows:
+        return {
+            "ok": True,
+            "data": rows,
+            "source": "local:place_knowledge_fts",
+            "warnings": [],
+        }
+
     clauses = ["(k.origin LIKE ? OR k.meaning LIKE ? OR k.history LIKE ? OR k.standard_name LIKE ?)"]
     like = f"%{keyword}%"
     params: list[Any] = [like, like, like, like]

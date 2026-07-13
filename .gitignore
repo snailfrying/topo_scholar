@@ -12,6 +12,7 @@ data/interim/*
 data/processed/*
 !data/processed/.gitkeep
 !data/processed/place_knowledge.csv
+!data/processed/collection_queue.csv
 
 # Keep metadata reports, but ignore transient OS files.
 data/metadata/*.tmp

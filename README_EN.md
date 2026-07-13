@@ -24,7 +24,7 @@ See `data/metadata/quality_report.json` and `docs/quality_assessment.md` for the
 | `places` | 665,276 |
 | `admin_edges` | 665,245 |
 | `place_aliases` | 2,981,225 |
-| `place_knowledge` | 2 |
+| `place_knowledge` | 3 |
 
 By level:
 
@@ -83,6 +83,7 @@ python topo_scholar_cli.py search-knowledge 洪洞 --limit 10
 ## Manual Build and Validation
 
 ```powershell
+python scripts\build_collection_queue.py --levels province,city,county
 python scripts\build_places.py
 python scripts\build_sqlite.py
 python scripts\validate_data.py
@@ -123,7 +124,7 @@ Current/planned MCP tools include:
 ```text
 data/
   raw/          # Minimal raw CSV data committed to the repository
-  processed/    # Local generated data; only small place_knowledge.csv and .gitkeep are committed
+  processed/    # Local generated data; small place_knowledge.csv, collection_queue.csv, and .gitkeep are committed
   cache/        # API response cache, ignored by Git
   metadata/     # Source catalog, hashes, and quality reports
 scripts/        # Build, collection, and validation scripts
@@ -148,13 +149,14 @@ See `docs/dataset_sources.md` for source details, licenses, and usage notes.
 - The five-level foundation is mainly based on 2023 statistical data and may not reflect the latest civil-affairs/geographical-name authority view.
 - `street/subdistrict` currently refers mainly to administrative subdistricts, not road/street names.
 - Hong Kong, Macao, and Taiwan are not included in the current five-level main table.
-- `place_knowledge` currently contains only a few examples; large-scale origin enrichment is still ongoing.
+- `place_knowledge` currently contains only a few examples; large-scale origin enrichment is still ongoing and batch scripts are intentionally rate-limited.
 - The China National Geographical Names Database should be queried and cached responsibly. Avoid high-frequency scraping or unauthorized redistribution.
 
 ## Roadmap
 
 - [ ] Batch enrich province, city, and county-level name origins.
-- [ ] Add SQLite FTS5/BM25 for topic queries such as water-related names or Hongdong migration.
+- [x] Add initial SQLite FTS5 support for cached origin knowledge.
+- [ ] Extend BM25/vector search for topic queries such as water-related names or Hongdong migration.
 - [ ] Add naming-type labels: surname, direction, hydrology, terrain, migration, military colony, historical figures, and more.
 - [ ] Separate administrative subdistricts from road/street names and ingest road-name data.
 - [ ] Add administrative-version diffs for removals, merges, renames, and code changes.

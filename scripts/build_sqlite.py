@@ -83,6 +83,43 @@ def build_aliases(conn: sqlite3.Connection) -> None:
         conn.executemany("INSERT INTO place_aliases VALUES (?, ?, ?, ?, ?, ?, ?, ?)", batch)
 
 
+def build_knowledge_fts(conn: sqlite3.Connection) -> None:
+    conn.execute("DROP TABLE IF EXISTS place_knowledge_fts")
+    try:
+        conn.execute(
+            """
+            CREATE VIRTUAL TABLE place_knowledge_fts USING fts5(
+                standard_name,
+                province,
+                city,
+                county,
+                place_type,
+                origin,
+                meaning,
+                history,
+                old_names,
+                content='place_knowledge',
+                content_rowid='rowid'
+            )
+            """
+        )
+    except sqlite3.OperationalError as exc:
+        print(f"FTS5 unavailable, skipped place_knowledge_fts: {exc}")
+        return
+
+    conn.execute(
+        """
+        INSERT INTO place_knowledge_fts(
+            rowid, standard_name, province, city, county, place_type,
+            origin, meaning, history, old_names
+        )
+        SELECT rowid, standard_name, province, city, county, place_type,
+               origin, meaning, history, old_names
+        FROM place_knowledge
+        """
+    )
+
+
 def main() -> None:
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
     with sqlite3.connect(DB_PATH) as conn:
@@ -93,6 +130,9 @@ def main() -> None:
         knowledge_csv = PROCESSED_DIR / "place_knowledge.csv"
         if knowledge_csv.exists():
             load_csv(conn, "place_knowledge", knowledge_csv)
+        queue_csv = PROCESSED_DIR / "collection_queue.csv"
+        if queue_csv.exists():
+            load_csv(conn, "collection_queue", queue_csv)
         build_aliases(conn)
 
         conn.execute("CREATE INDEX IF NOT EXISTS idx_places_code ON places(code)")
@@ -117,6 +157,12 @@ def main() -> None:
             )
             conn.execute("CREATE INDEX IF NOT EXISTS idx_knowledge_place_id ON place_knowledge(place_id)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_knowledge_source_place_id ON place_knowledge(source_place_id)")
+            build_knowledge_fts(conn)
+        if queue_csv.exists():
+            conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_collection_queue_id ON collection_queue(id)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_collection_queue_status ON collection_queue(status)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_collection_queue_priority ON collection_queue(priority)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_collection_queue_place_id ON collection_queue(place_id)")
         conn.commit()
 
         count = conn.execute("SELECT COUNT(*) FROM places").fetchone()[0]
@@ -126,6 +172,9 @@ def main() -> None:
         if knowledge_csv.exists():
             knowledge_count = conn.execute("SELECT COUNT(*) FROM place_knowledge").fetchone()[0]
             print(f"Wrote {knowledge_count} knowledge rows to {DB_PATH}")
+        if queue_csv.exists():
+            queue_count = conn.execute("SELECT COUNT(*) FROM collection_queue").fetchone()[0]
+            print(f"Wrote {queue_count} collection queue rows to {DB_PATH}")
 
 
 if __name__ == "__main__":

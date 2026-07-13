@@ -28,14 +28,20 @@ def main() -> None:
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
 
+    counts = {
+        "places": scalar(conn, "select count(*) from places"),
+        "admin_edges": scalar(conn, "select count(*) from admin_edges"),
+        "place_aliases": scalar(conn, "select count(*) from place_aliases"),
+        "place_knowledge": scalar(conn, "select count(*) from place_knowledge"),
+    }
+    try:
+        counts["collection_queue"] = scalar(conn, "select count(*) from collection_queue")
+    except sqlite3.OperationalError:
+        counts["collection_queue"] = 0
+
     report = {
         "database": str(DB_PATH.relative_to(ROOT)).replace("\\", "/"),
-        "counts": {
-            "places": scalar(conn, "select count(*) from places"),
-            "admin_edges": scalar(conn, "select count(*) from admin_edges"),
-            "place_aliases": scalar(conn, "select count(*) from place_aliases"),
-            "place_knowledge": scalar(conn, "select count(*) from place_knowledge"),
-        },
+        "counts": counts,
         "places_by_level": rows(
             conn,
             "select level, count(*) as count from places group by level order by level",

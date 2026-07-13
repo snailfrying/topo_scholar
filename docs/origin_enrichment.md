@@ -46,6 +46,25 @@
 
 ## 7. 当前已实现命令
 
+### 7.0 构建采集队列
+
+```powershell
+python scripts\build_collection_queue.py --levels province,city,county
+```
+
+默认优先构建省/市/县三级队列，后续可以扩展到乡镇和村级。队列写入：
+
+- `data/processed/collection_queue.csv`
+
+### 7.0.1 限速批量补齐
+
+```powershell
+python scripts\batch_fetch_origins.py --max-items 3 --dry-run
+python scripts\batch_fetch_origins.py --max-items 1 --levels province --sleep 1
+```
+
+批量脚本默认小批量、限速执行；不建议一次性全量抓取。采集成功后会更新 `place_knowledge.csv`，并重建 SQLite 和 FTS 表。
+
 ### 7.1 拉取并缓存地名由来
 
 ```powershell
