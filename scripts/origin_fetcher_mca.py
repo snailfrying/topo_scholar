@@ -91,7 +91,13 @@ def cache_key(prefix: str, params: dict[str, Any]) -> Path:
     return CACHE_DIR / prefix / f"{digest}.json"
 
 
-def request_json(path: str, params: dict[str, Any], referer: str, sleep_seconds: float) -> dict[str, Any]:
+def request_json(
+    path: str,
+    params: dict[str, Any],
+    referer: str,
+    sleep_seconds: float,
+    retries: int = 3,
+) -> dict[str, Any]:
     cache_path = cache_key(path.strip("/").replace("/", "_"), params)
     if cache_path.exists():
         return json.loads(cache_path.read_text(encoding="utf-8"))
@@ -108,13 +114,24 @@ def request_json(path: str, params: dict[str, Any], referer: str, sleep_seconds:
         "Accept": "application/json, text/plain, */*",
     }
     req = Request(url, headers=headers)
-    try:
-        with urlopen(req, timeout=30) as resp:
-            raw = resp.read().decode("utf-8")
-    except HTTPError as exc:
-        raise RuntimeError(f"HTTP {exc.code} from MCA endpoint: {url}") from exc
-    except URLError as exc:
-        raise RuntimeError(f"Network error from MCA endpoint: {url}: {exc}") from exc
+    last_error: Exception | None = None
+    for attempt in range(1, retries + 1):
+        try:
+            with urlopen(req, timeout=30) as resp:
+                raw = resp.read().decode("utf-8")
+            break
+        except HTTPError as exc:
+            last_error = exc
+            if attempt >= retries:
+                raise RuntimeError(f"HTTP {exc.code} from MCA endpoint: {url}") from exc
+        except URLError as exc:
+            last_error = exc
+            if attempt >= retries:
+                raise RuntimeError(f"Network error from MCA endpoint: {url}: {exc}") from exc
+        if sleep_seconds > 0:
+            time.sleep(max(sleep_seconds, 1.0) * attempt)
+    else:
+        raise RuntimeError(f"Network error from MCA endpoint: {url}: {last_error}")
 
     cache_path.write_text(raw, encoding="utf-8")
     if sleep_seconds > 0:

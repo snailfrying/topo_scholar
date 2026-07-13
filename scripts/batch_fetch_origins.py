@@ -106,7 +106,10 @@ def main() -> None:
             continue
 
         print(f"{row['status']} -> {row['name']} {row['full_name']} level={row['level']}")
-        status, error = fetch_row(row, args.sleep, args.dry_run, args.max_pages)
+        try:
+            status, error = fetch_row(row, args.sleep, args.dry_run, args.max_pages)
+        except Exception as exc:
+            status, error = "failed", str(exc)
         row["status"] = status
         row["error"] = error
         row["attempt_count"] = str(int(row.get("attempt_count") or "0") + (0 if args.dry_run else 1))
@@ -114,9 +117,10 @@ def main() -> None:
         row["updated_at"] = now
         processed += 1
         print(f"  result={status} error={error}")
+        if not args.dry_run:
+            write_queue(queue)
 
     if not args.dry_run:
-        write_queue(queue)
         # Rebuild SQLite indexes/tables so collection_queue and FTS stay in sync.
         import subprocess
 
