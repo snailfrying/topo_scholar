@@ -1,0 +1,38 @@
+# IDE / local scratch
+.idea/
+main.py
+__pycache__/
+*.py[cod]
+
+# Local caches
+data/cache/
+data/interim/*
+
+# Generated heavy outputs. They are rebuilt by scripts/build_places.py and scripts/build_sqlite.py.
+data/processed/*
+!data/processed/.gitkeep
+!data/processed/place_knowledge.csv
+
+# Keep metadata reports, but ignore transient OS files.
+data/metadata/*.tmp
+
+# Raw data policy: keep only the minimal CSV/readme/license files required to rebuild.
+data/raw/**
+
+!data/raw/administrative-divisions-of-china/
+!data/raw/administrative-divisions-of-china/LICENSE
+!data/raw/administrative-divisions-of-china/README.md
+!data/raw/administrative-divisions-of-china/dist/
+!data/raw/administrative-divisions-of-china/dist/provinces.csv
+!data/raw/administrative-divisions-of-china/dist/cities.csv
+!data/raw/administrative-divisions-of-china/dist/areas.csv
+!data/raw/administrative-divisions-of-china/dist/streets.csv
+!data/raw/administrative-divisions-of-china/dist/villages.csv
+
+!data/raw/AreaCity-JsSpider-StatsGov/
+!data/raw/AreaCity-JsSpider-StatsGov/LICENSE
+!data/raw/AreaCity-JsSpider-StatsGov/README.md
+!data/raw/AreaCity-JsSpider-StatsGov/src/
+!data/raw/AreaCity-JsSpider-StatsGov/src/采集到的数据/
+!data/raw/AreaCity-JsSpider-StatsGov/src/采集到的数据/ok_data_level3.csv
+!data/raw/AreaCity-JsSpider-StatsGov/src/采集到的数据/ok_data_level4.csv

@@ -1,0 +1,2 @@
+# Optional MCP server dependency.
+mcp>=1.0.0

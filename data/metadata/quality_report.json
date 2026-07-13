@@ -1,0 +1,113 @@
+{
+  "database": "data/processed/topo_scholar.sqlite",
+  "counts": {
+    "places": 665276,
+    "admin_edges": 665245,
+    "place_aliases": 2981225,
+    "place_knowledge": 2
+  },
+  "places_by_level": [
+    {
+      "level": "city",
+      "count": 342
+    },
+    {
+      "level": "county",
+      "count": 2978
+    },
+    {
+      "level": "province",
+      "count": 31
+    },
+    {
+      "level": "town",
+      "count": 41352
+    },
+    {
+      "level": "village",
+      "count": 620573
+    }
+  ],
+  "integrity": {
+    "empty_names": 0,
+    "duplicate_ids": 0,
+    "duplicate_codes": 0,
+    "edges_with_missing_child": 0,
+    "edges_with_missing_parent": 0,
+    "non_province_without_parent": 0,
+    "province_with_parent": 0,
+    "alias_orphans": 0,
+    "alias_duplicate_pairs": 0,
+    "knowledge_unlinked": 0,
+    "knowledge_link_missing": 0
+  },
+  "top_same_names": [
+    {
+      "name": "和平村委会",
+      "count": 274
+    },
+    {
+      "name": "团结村委会",
+      "count": 274
+    },
+    {
+      "name": "太平村委会",
+      "count": 244
+    },
+    {
+      "name": "红星村委会",
+      "count": 224
+    },
+    {
+      "name": "前进村委会",
+      "count": 214
+    },
+    {
+      "name": "新民村委会",
+      "count": 209
+    },
+    {
+      "name": "胜利村委会",
+      "count": 208
+    },
+    {
+      "name": "红旗村委会",
+      "count": 202
+    },
+    {
+      "name": "新庄村委会",
+      "count": 196
+    },
+    {
+      "name": "光明村委会",
+      "count": 193
+    }
+  ],
+  "samples": {
+    "wuhan": [
+      {
+        "code": "4201",
+        "name": "武汉市",
+        "full_name": "湖北省/武汉市",
+        "level": "city"
+      }
+    ],
+    "nangao_alias": [
+      {
+        "code": "370523001227",
+        "name": "南高村委会",
+        "full_name": "山东省/东营市/广饶县/广饶街道/南高村委会",
+        "level": "village",
+        "alias": "南高村"
+      }
+    ],
+    "nangao_knowledge": [
+      {
+        "standard_name": "南高村",
+        "origin": "明洪武二年（1369年），高秃儿由山西洪洞县迁来此地立村，取名小高庄。1950年因位于北高以南，故改名南高。",
+        "local_code": "370523001227",
+        "local_full_name": "山东省/东营市/广饶县/广饶街道/南高村委会"
+      }
+    ]
+  }
+}

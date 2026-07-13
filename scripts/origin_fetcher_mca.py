@@ -1,0 +1,451 @@
+import argparse
+import csv
+import hashlib
+import json
+import sqlite3
+import sys
+import time
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+from urllib.error import HTTPError, URLError
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
+
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from topo_scholar.normalize import generate_aliases
+
+DB_PATH = ROOT / "data" / "processed" / "topo_scholar.sqlite"
+CACHE_DIR = ROOT / "data" / "cache" / "mca_geonames"
+PROCESSED_DIR = ROOT / "data" / "processed"
+KNOWLEDGE_CSV = PROCESSED_DIR / "place_knowledge.csv"
+
+BASE_URL = "https://dmfw.mca.gov.cn/9095"
+SOURCE = "中国·国家地名信息库"
+SOURCE_TYPE = "official"
+SOURCE_URL = "https://dmfw.mca.gov.cn/"
+
+
+KNOWLEDGE_FIELDS = [
+    "id",
+    "place_id",
+    "source_place_id",
+    "standard_name",
+    "province",
+    "city",
+    "county",
+    "place_type",
+    "origin",
+    "meaning",
+    "history",
+    "old_names",
+    "evidence_url",
+    "evidence_title",
+    "evidence_quote",
+    "confidence",
+    "source",
+    "source_type",
+    "raw_hash",
+    "fetched_at",
+    "updated_at",
+]
+
+
+def utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def stable_id(*parts: str) -> str:
+    return hashlib.sha1("|".join(parts).encode("utf-8")).hexdigest()
+
+
+def sha256_text(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def cache_key(prefix: str, params: dict[str, Any]) -> Path:
+    encoded = json.dumps(params, ensure_ascii=False, sort_keys=True)
+    digest = hashlib.sha1(encoded.encode("utf-8")).hexdigest()
+    return CACHE_DIR / prefix / f"{digest}.json"
+
+
+def request_json(path: str, params: dict[str, Any], referer: str, sleep_seconds: float) -> dict[str, Any]:
+    cache_path = cache_key(path.strip("/").replace("/", "_"), params)
+    if cache_path.exists():
+        return json.loads(cache_path.read_text(encoding="utf-8"))
+
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    url = f"{BASE_URL}{path}?{urlencode(params)}"
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36"
+        ),
+        "Referer": referer,
+        "Accept": "application/json, text/plain, */*",
+    }
+    req = Request(url, headers=headers)
+    try:
+        with urlopen(req, timeout=30) as resp:
+            raw = resp.read().decode("utf-8")
+    except HTTPError as exc:
+        raise RuntimeError(f"HTTP {exc.code} from MCA endpoint: {url}") from exc
+    except URLError as exc:
+        raise RuntimeError(f"Network error from MCA endpoint: {url}: {exc}") from exc
+
+    cache_path.write_text(raw, encoding="utf-8")
+    if sleep_seconds > 0:
+        time.sleep(sleep_seconds)
+    return json.loads(raw)
+
+
+def search_mca(name: str, page: int, size: int, sleep_seconds: float) -> dict[str, Any]:
+    return request_json(
+        "/stname/listPub",
+        {"stName": name, "searchType": "模糊", "page": page, "size": size},
+        "https://dmfw.mca.gov.cn/search.html",
+        sleep_seconds,
+    )
+
+
+def details_mca(source_place_id: str, sleep_seconds: float) -> dict[str, Any]:
+    # The public web page uses placeType=2 for details queries.
+    return request_json(
+        "/stname/detailsPub",
+        {"placeType": "2", "id": source_place_id},
+        "https://dmfw.mca.gov.cn/search.html",
+        sleep_seconds,
+    )
+
+
+def ensure_knowledge_table(conn: sqlite3.Connection) -> None:
+    columns = ", ".join(f"{field} TEXT" for field in KNOWLEDGE_FIELDS)
+    conn.execute(f"CREATE TABLE IF NOT EXISTS place_knowledge ({columns}, PRIMARY KEY(id))")
+    conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_place_knowledge_id ON place_knowledge(id)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_place_knowledge_place_id ON place_knowledge(place_id)")
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_place_knowledge_source_place_id "
+        "ON place_knowledge(source_place_id)"
+    )
+    conn.commit()
+
+
+def local_candidates(
+    conn: sqlite3.Connection,
+    name: str,
+    province: str = "",
+    city: str = "",
+    county: str = "",
+    limit: int = 50,
+) -> list[dict[str, str]]:
+    clauses = ["name = ?"]
+    params: list[Any] = [name]
+    if province:
+        clauses.append("province = ?")
+        params.append(province)
+    if city:
+        clauses.append("city = ?")
+        params.append(city)
+    if county:
+        clauses.append("county = ?")
+        params.append(county)
+    params.append(limit)
+    sql = f"""
+        SELECT id, code, name, full_name, level, province, city, county, town
+        FROM places
+        WHERE {" AND ".join(clauses)}
+        ORDER BY level, code
+        LIMIT ?
+    """
+    rows = []
+    for row in conn.execute(sql, params):
+        rows.append(
+            {
+                "id": row[0],
+                "code": row[1],
+                "name": row[2],
+                "full_name": row[3],
+                "level": row[4],
+                "province": row[5],
+                "city": row[6],
+                "county": row[7],
+                "town": row[8],
+            }
+        )
+    return rows
+
+
+def match_local_place(conn: sqlite3.Connection, detail: dict[str, Any]) -> str:
+    name = detail.get("standard_name") or ""
+    province = detail.get("province_name") or ""
+    city = detail.get("city_name") or ""
+    county = detail.get("area_name") or ""
+
+    candidates = local_candidates(conn, name, province=province, city=city, county=county, limit=5)
+    if candidates:
+        return candidates[0]["id"]
+
+    candidates = local_candidates(conn, name, province=province, city=city, limit=5)
+    if candidates:
+        return candidates[0]["id"]
+
+    candidates = local_candidates(conn, name, province=province, limit=5)
+    if candidates:
+        return candidates[0]["id"]
+
+    # Fall back to generated aliases, e.g. "南高村" vs "南高村村民委员会".
+    try:
+        for alias in generate_aliases(name):
+            rows = conn.execute(
+                """
+                SELECT p.id
+                FROM place_aliases a
+                JOIN places p ON p.id = a.place_id
+                WHERE a.alias = ?
+                  AND (? = '' OR p.province = ?)
+                  AND (? = '' OR p.city = ?)
+                  AND (? = '' OR p.county = ?)
+                ORDER BY p.level, p.code
+                LIMIT 1
+                """,
+                [alias, province, province, city, city, county, county],
+            ).fetchall()
+            if rows:
+                return rows[0][0]
+    except sqlite3.OperationalError:
+        pass
+
+    return ""
+
+
+def confidence_for(detail: dict[str, Any]) -> str:
+    if detail.get("place_origin") or detail.get("place_meaning") or detail.get("place_history"):
+        return "high"
+    return "low"
+
+
+def evidence_quote(detail: dict[str, Any]) -> str:
+    for key in ("place_origin", "place_meaning", "place_history"):
+        value = (detail.get(key) or "").strip()
+        if value:
+            return value[:180]
+    return ""
+
+
+def normalize_knowledge(conn: sqlite3.Connection, detail: dict[str, Any]) -> dict[str, str]:
+    fetched_at = utc_now()
+    raw_text = json.dumps(detail, ensure_ascii=False, sort_keys=True)
+    source_place_id = detail.get("id") or ""
+    standard_name = detail.get("standard_name") or ""
+    row_id = stable_id(SOURCE, source_place_id, standard_name)
+    return {
+        "id": row_id,
+        "place_id": match_local_place(conn, detail),
+        "source_place_id": source_place_id,
+        "standard_name": standard_name,
+        "province": detail.get("province_name") or "",
+        "city": detail.get("city_name") or "",
+        "county": detail.get("area_name") or "",
+        "place_type": detail.get("place_type") or "",
+        "origin": detail.get("place_origin") or "",
+        "meaning": detail.get("place_meaning") or "",
+        "history": detail.get("place_history") or "",
+        "old_names": detail.get("old_name") or "",
+        "evidence_url": SOURCE_URL,
+        "evidence_title": SOURCE,
+        "evidence_quote": evidence_quote(detail),
+        "confidence": confidence_for(detail),
+        "source": SOURCE,
+        "source_type": SOURCE_TYPE,
+        "raw_hash": sha256_text(raw_text),
+        "fetched_at": fetched_at,
+        "updated_at": fetched_at,
+    }
+
+
+def upsert_knowledge(conn: sqlite3.Connection, row: dict[str, str]) -> None:
+    ensure_knowledge_table(conn)
+    placeholders = ", ".join("?" for _ in KNOWLEDGE_FIELDS)
+    columns = ", ".join(KNOWLEDGE_FIELDS)
+    updates = ", ".join(f"{field}=excluded.{field}" for field in KNOWLEDGE_FIELDS if field != "id")
+    sql = f"""
+        INSERT INTO place_knowledge ({columns})
+        VALUES ({placeholders})
+        ON CONFLICT(id) DO UPDATE SET {updates}
+    """
+    conn.execute(sql, [row.get(field, "") for field in KNOWLEDGE_FIELDS])
+    conn.commit()
+
+
+def append_or_update_csv(row: dict[str, str]) -> None:
+    existing: dict[str, dict[str, str]] = {}
+    if KNOWLEDGE_CSV.exists():
+        with KNOWLEDGE_CSV.open("r", encoding="utf-8", newline="") as f:
+            for item in csv.DictReader(f):
+                existing[item["id"]] = item
+    existing[row["id"]] = row
+    with KNOWLEDGE_CSV.open("w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=KNOWLEDGE_FIELDS)
+        writer.writeheader()
+        writer.writerows(existing.values())
+
+
+def passes_filters(record: dict[str, Any], province: str, city: str, county: str, place_type: str) -> bool:
+    if province and record.get("province_name") != province:
+        return False
+    if city and record.get("city_name") != city:
+        return False
+    if county and record.get("area_name") != county:
+        return False
+    if place_type and record.get("place_type") != place_type:
+        return False
+    return True
+
+
+def print_candidates(records: list[dict[str, Any]]) -> None:
+    for index, record in enumerate(records, start=1):
+        path = "/".join(
+            part
+            for part in [
+                record.get("province_name"),
+                record.get("city_name"),
+                record.get("area_name"),
+                record.get("standard_name"),
+            ]
+            if part
+        )
+        print(f"{index}. {record.get('standard_name')} [{record.get('place_type')}] {path} id={record.get('id')}")
+
+
+def fetch_and_save(
+    name: str,
+    *,
+    province: str = "",
+    city: str = "",
+    county: str = "",
+    place_type: str = "",
+    limit: int = 5,
+    page_size: int = 20,
+    sleep_seconds: float = 0.8,
+    list_only: bool = False,
+) -> dict[str, Any]:
+    result = search_mca(name, page=1, size=page_size, sleep_seconds=sleep_seconds)
+    records = result.get("records") or []
+    filtered = [
+        record
+        for record in records
+        if passes_filters(record, province, city, county, place_type)
+    ]
+
+    candidates = []
+    for record in filtered[:limit]:
+        path = "/".join(
+            part
+            for part in [
+                record.get("province_name"),
+                record.get("city_name"),
+                record.get("area_name"),
+                record.get("standard_name"),
+            ]
+            if part
+        )
+        candidates.append(
+            {
+                "source_place_id": record.get("id") or "",
+                "standard_name": record.get("standard_name") or "",
+                "place_type": record.get("place_type") or "",
+                "province": record.get("province_name") or "",
+                "city": record.get("city_name") or "",
+                "county": record.get("area_name") or "",
+                "path": path,
+            }
+        )
+
+    saved = []
+    if not list_only and candidates:
+        with sqlite3.connect(DB_PATH) as conn:
+            for candidate in candidates:
+                detail = details_mca(candidate["source_place_id"], sleep_seconds=sleep_seconds)
+                row = normalize_knowledge(conn, detail)
+                upsert_knowledge(conn, row)
+                append_or_update_csv(row)
+                saved.append(row)
+
+    warnings = []
+    if not filtered:
+        warnings.append("国家地名信息库未找到符合过滤条件的候选")
+    if len(filtered) > limit:
+        warnings.append(f"候选结果已截断到 {limit} 条，可提高 limit 或增加省市县/类型过滤")
+
+    return {
+        "ok": True,
+        "data": {
+            "search_total": result.get("total", len(records)),
+            "page_records": len(records),
+            "filtered": len(filtered),
+            "candidates": candidates,
+            "saved": saved,
+        },
+        "source": SOURCE,
+        "warnings": warnings,
+    }
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Fetch place origin from China National Geographical Names DB.")
+    parser.add_argument("name", help="Place name to search")
+    parser.add_argument("--province", default="", help="Filter by province name, e.g. 湖北省")
+    parser.add_argument("--city", default="", help="Filter by city name, e.g. 武汉市")
+    parser.add_argument("--county", default="", help="Filter by county/district name, e.g. 江岸区")
+    parser.add_argument("--place-type", default="", help="Filter by MCA place type, e.g. 地级行政区")
+    parser.add_argument("--limit", type=int, default=5, help="Max details to fetch")
+    parser.add_argument("--page-size", type=int, default=20, help="Search page size")
+    parser.add_argument("--sleep", type=float, default=0.8, help="Delay after uncached network requests")
+    parser.add_argument("--list-only", action="store_true", help="Only list candidates, do not fetch details")
+    args = parser.parse_args()
+
+    payload = fetch_and_save(
+        args.name,
+        province=args.province,
+        city=args.city,
+        county=args.county,
+        place_type=args.place_type,
+        limit=args.limit,
+        page_size=args.page_size,
+        sleep_seconds=args.sleep,
+        list_only=args.list_only,
+    )
+
+    data = payload["data"]
+    print(
+        f"MCA search total={data['search_total']}, "
+        f"page_records={data['page_records']}, filtered={data['filtered']}"
+    )
+
+    for index, candidate in enumerate(data["candidates"], start=1):
+        print(
+            f"{index}. {candidate['standard_name']} [{candidate['place_type']}] "
+            f"{candidate['path']} id={candidate['source_place_id']}"
+        )
+    for row in data["saved"]:
+        print(
+            "saved",
+            row["standard_name"],
+            row["place_type"],
+            f"origin={bool(row['origin'])}",
+            f"meaning={bool(row['meaning'])}",
+            f"history={bool(row['history'])}",
+            f"place_id={row['place_id'] or 'unmatched'}",
+        )
+    if payload["warnings"]:
+        for warning in payload["warnings"]:
+            print("warning:", warning)
+
+
+if __name__ == "__main__":
+    main()
