@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 INPUT_CSV = ROOT / "data" / "metadata" / "manual_origin_records.csv"
 QUEUE_CSV = ROOT / "data" / "processed" / "collection_queue.csv"
 KNOWLEDGE_CSV = ROOT / "data" / "processed" / "place_knowledge.csv"
+REVIEW_CSV = ROOT / "data" / "metadata" / "origin_failed_review.csv"
 
 
 KNOWLEDGE_FIELDS = [
@@ -142,6 +143,32 @@ def update_queue(manual_rows: list[dict[str, str]], queue_rows: list[dict[str, s
     write_csv(QUEUE_CSV, queue_rows, list(queue_rows[0].keys()))
 
 
+def update_failed_review(manual_rows: list[dict[str, str]], now: str) -> None:
+    if not REVIEW_CSV.exists():
+        return
+    review_rows = read_csv(REVIEW_CSV)
+    if not review_rows:
+        return
+
+    manual_by_code = {row["code"]: row for row in manual_rows}
+    fields = list(review_rows[0].keys())
+    for field in ["resolution_status", "resolved_at", "resolution_source_url", "resolution_note"]:
+        if field not in fields:
+            fields.append(field)
+
+    for row in review_rows:
+        manual = manual_by_code.get(row.get("code", ""))
+        if not manual:
+            if not row.get("resolution_status"):
+                row["resolution_status"] = "unresolved_needs_review"
+            continue
+        row["resolution_status"] = "manual_source_imported"
+        row["resolved_at"] = now
+        row["resolution_source_url"] = manual.get("evidence_url", "")
+        row["resolution_note"] = "Imported into place_knowledge.csv from manually verified source."
+    write_csv(REVIEW_CSV, review_rows, fields)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Import manually verified origin records into place_knowledge.csv.")
     parser.add_argument("--input", type=Path, default=INPUT_CSV)
@@ -160,6 +187,7 @@ def main() -> None:
     knowledge_rows = [knowledge_row(row, queue_by_code[row["code"]], now) for row in manual_rows]
     upsert_knowledge(knowledge_rows)
     update_queue(manual_rows, queue_rows, now)
+    update_failed_review(manual_rows, now)
 
     if not args.no_rebuild:
         subprocess.check_call([sys.executable, str(ROOT / "scripts" / "build_sqlite.py")], cwd=str(ROOT))
