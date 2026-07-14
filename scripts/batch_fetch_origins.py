@@ -1,4 +1,5 @@
 import argparse
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import csv
 import sqlite3
 import sys
@@ -90,6 +91,33 @@ def should_process(row: dict[str, str], levels: set[str], max_attempts: int) -> 
     return True
 
 
+def update_row_after_fetch(
+    row: dict[str, str],
+    status: str,
+    error: str,
+    now: str,
+    dry_run: bool,
+) -> None:
+    row["status"] = status
+    row["error"] = error
+    row["attempt_count"] = str(int(row.get("attempt_count") or "0") + (0 if dry_run else 1))
+    row["last_attempt_at"] = now if not dry_run else row.get("last_attempt_at", "")
+    row["updated_at"] = now
+
+
+def fetch_row_safe(
+    row: dict[str, str],
+    sleep_seconds: float,
+    dry_run: bool,
+    max_pages: int,
+) -> tuple[dict[str, str], str, str]:
+    try:
+        status, error = fetch_row(row, sleep_seconds, dry_run, max_pages)
+    except Exception as exc:
+        status, error = "failed", str(exc)
+    return row, status, error
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Batch fetch place origins from collection_queue.csv.")
     parser.add_argument("--max-items", type=int, default=5, help="Max pending rows to process")
@@ -97,6 +125,7 @@ def main() -> None:
     parser.add_argument("--sleep", type=float, default=1.0, help="Delay after uncached network requests")
     parser.add_argument("--max-pages", type=int, default=3, help="Max MCA search pages to inspect per place")
     parser.add_argument("--max-attempts", type=int, default=3, help="Skip failed rows after this many attempts; use 0 to retry without limit")
+    parser.add_argument("--workers", type=int, default=1, help="Concurrent fetch workers; keep low to avoid stressing upstream")
     parser.add_argument("--dry-run", action="store_true", help="Show items without fetching")
     parser.add_argument("--rebuild-queue", action="store_true", help="Rebuild queue before fetching")
     args = parser.parse_args()
@@ -107,29 +136,34 @@ def main() -> None:
         build_queue(levels)
 
     queue = read_queue()
+    selected_rows = [row for row in queue if should_process(row, level_set, args.max_attempts)][: args.max_items]
     processed = 0
     now = utc_now()
 
-    for row in queue:
-        if processed >= args.max_items:
-            break
-        if not should_process(row, level_set, args.max_attempts):
-            continue
+    if args.workers <= 1 or args.dry_run:
+        for row in selected_rows:
+            print(f"{row['status']} -> {row['name']} {row['full_name']} level={row['level']}")
+            row, status, error = fetch_row_safe(row, args.sleep, args.dry_run, args.max_pages)
+            update_row_after_fetch(row, status, error, now, args.dry_run)
+            processed += 1
+            print(f"  result={status} error={error}")
+            if not args.dry_run:
+                write_queue(queue)
+    else:
+        workers = max(1, args.workers)
+        print(f"Processing {len(selected_rows)} rows with {workers} workers")
+        with ThreadPoolExecutor(max_workers=workers) as executor:
+            futures = []
+            for row in selected_rows:
+                print(f"{row['status']} -> {row['name']} {row['full_name']} level={row['level']}")
+                futures.append(executor.submit(fetch_row_safe, row, args.sleep, False, args.max_pages))
 
-        print(f"{row['status']} -> {row['name']} {row['full_name']} level={row['level']}")
-        try:
-            status, error = fetch_row(row, args.sleep, args.dry_run, args.max_pages)
-        except Exception as exc:
-            status, error = "failed", str(exc)
-        row["status"] = status
-        row["error"] = error
-        row["attempt_count"] = str(int(row.get("attempt_count") or "0") + (0 if args.dry_run else 1))
-        row["last_attempt_at"] = now if not args.dry_run else row.get("last_attempt_at", "")
-        row["updated_at"] = now
-        processed += 1
-        print(f"  result={status} error={error}")
-        if not args.dry_run:
-            write_queue(queue)
+            for future in as_completed(futures):
+                row, status, error = future.result()
+                update_row_after_fetch(row, status, error, now, False)
+                processed += 1
+                print(f"  result={status} {row['name']} error={error}")
+                write_queue(queue)
 
     if not args.dry_run:
         # Rebuild SQLite indexes/tables so collection_queue and FTS stay in sync.

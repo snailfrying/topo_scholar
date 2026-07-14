@@ -4,6 +4,7 @@ import hashlib
 import json
 import sqlite3
 import sys
+import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -23,6 +24,10 @@ DB_PATH = ROOT / "data" / "processed" / "topo_scholar.sqlite"
 CACHE_DIR = ROOT / "data" / "cache" / "mca_geonames"
 PROCESSED_DIR = ROOT / "data" / "processed"
 KNOWLEDGE_CSV = PROCESSED_DIR / "place_knowledge.csv"
+
+CACHE_LOCK = threading.Lock()
+KNOWLEDGE_WRITE_LOCK = threading.Lock()
+AUDIT_WRITE_LOCK = threading.Lock()
 
 BASE_URL = "https://dmfw.mca.gov.cn/9095"
 SOURCE = "中国·国家地名信息库"
@@ -99,8 +104,9 @@ def request_json(
     retries: int = 3,
 ) -> dict[str, Any]:
     cache_path = cache_key(path.strip("/").replace("/", "_"), params)
-    if cache_path.exists():
-        return json.loads(cache_path.read_text(encoding="utf-8"))
+    with CACHE_LOCK:
+        if cache_path.exists():
+            return json.loads(cache_path.read_text(encoding="utf-8"))
 
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     cache_path.parent.mkdir(parents=True, exist_ok=True)
@@ -133,7 +139,10 @@ def request_json(
     else:
         raise RuntimeError(f"Network error from MCA endpoint: {url}: {last_error}")
 
-    cache_path.write_text(raw, encoding="utf-8")
+    with CACHE_LOCK:
+        tmp_path = cache_path.with_suffix(f".{threading.get_ident()}.tmp")
+        tmp_path.write_text(raw, encoding="utf-8")
+        tmp_path.replace(cache_path)
     if sleep_seconds > 0:
         time.sleep(sleep_seconds)
     return json.loads(raw)
@@ -331,16 +340,17 @@ def upsert_knowledge(conn: sqlite3.Connection, row: dict[str, str]) -> None:
 
 
 def append_or_update_csv(row: dict[str, str]) -> None:
-    existing: dict[str, dict[str, str]] = {}
-    if KNOWLEDGE_CSV.exists():
-        with KNOWLEDGE_CSV.open("r", encoding="utf-8", newline="") as f:
-            for item in csv.DictReader(f):
-                existing[item["id"]] = item
-    existing[row["id"]] = row
-    with KNOWLEDGE_CSV.open("w", encoding="utf-8", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=KNOWLEDGE_FIELDS)
-        writer.writeheader()
-        writer.writerows(existing.values())
+    with KNOWLEDGE_WRITE_LOCK:
+        existing: dict[str, dict[str, str]] = {}
+        if KNOWLEDGE_CSV.exists():
+            with KNOWLEDGE_CSV.open("r", encoding="utf-8", newline="") as f:
+                for item in csv.DictReader(f):
+                    existing[item["id"]] = item
+        existing[row["id"]] = row
+        with KNOWLEDGE_CSV.open("w", encoding="utf-8", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=KNOWLEDGE_FIELDS)
+            writer.writeheader()
+            writer.writerows(existing.values())
 
 
 def passes_filters(record: dict[str, Any], province: str, city: str, county: str, place_type: str) -> bool:
@@ -439,38 +449,39 @@ def append_candidate_audit(
     candidates: list[dict[str, Any]],
     selected_ids: set[str],
 ) -> None:
-    existing: list[dict[str, str]] = []
-    if CANDIDATE_AUDIT_CSV.exists():
-        with CANDIDATE_AUDIT_CSV.open("r", encoding="utf-8", newline="") as f:
-            existing = list(csv.DictReader(f))
+    with AUDIT_WRITE_LOCK:
+        existing: list[dict[str, str]] = []
+        if CANDIDATE_AUDIT_CSV.exists():
+            with CANDIDATE_AUDIT_CSV.open("r", encoding="utf-8", newline="") as f:
+                existing = list(csv.DictReader(f))
 
-    now = utc_now()
-    for record in candidates:
-        source_place_id = record.get("id") or ""
-        existing.append(
-            {
-                "fetched_at": now,
-                "query_name": query_name,
-                "filter_province": province,
-                "filter_city": city,
-                "filter_county": county,
-                "filter_place_type": place_type,
-                "source_place_id": source_place_id,
-                "standard_name": record.get("standard_name") or "",
-                "place_type": record.get("place_type") or "",
-                "province": record.get("province_name") or "",
-                "city": record.get("city_name") or "",
-                "county": record.get("area_name") or "",
-                "score": str(record.get("_score", "")),
-                "selected": "1" if source_place_id in selected_ids else "0",
-            }
-        )
+        now = utc_now()
+        for record in candidates:
+            source_place_id = record.get("id") or ""
+            existing.append(
+                {
+                    "fetched_at": now,
+                    "query_name": query_name,
+                    "filter_province": province,
+                    "filter_city": city,
+                    "filter_county": county,
+                    "filter_place_type": place_type,
+                    "source_place_id": source_place_id,
+                    "standard_name": record.get("standard_name") or "",
+                    "place_type": record.get("place_type") or "",
+                    "province": record.get("province_name") or "",
+                    "city": record.get("city_name") or "",
+                    "county": record.get("area_name") or "",
+                    "score": str(record.get("_score", "")),
+                    "selected": "1" if source_place_id in selected_ids else "0",
+                }
+            )
 
-    CANDIDATE_AUDIT_CSV.parent.mkdir(parents=True, exist_ok=True)
-    with CANDIDATE_AUDIT_CSV.open("w", encoding="utf-8", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=CANDIDATE_AUDIT_FIELDS)
-        writer.writeheader()
-        writer.writerows(existing)
+        CANDIDATE_AUDIT_CSV.parent.mkdir(parents=True, exist_ok=True)
+        with CANDIDATE_AUDIT_CSV.open("w", encoding="utf-8", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=CANDIDATE_AUDIT_FIELDS)
+            writer.writeheader()
+            writer.writerows(existing)
 
 
 def print_candidates(records: list[dict[str, Any]]) -> None:
@@ -544,7 +555,8 @@ def fetch_and_save(
             for candidate in candidates:
                 detail = details_mca(candidate["source_place_id"], sleep_seconds=sleep_seconds)
                 row = normalize_knowledge(conn, detail)
-                upsert_knowledge(conn, row)
+                with KNOWLEDGE_WRITE_LOCK:
+                    upsert_knowledge(conn, row)
                 append_or_update_csv(row)
                 saved.append(row)
 
