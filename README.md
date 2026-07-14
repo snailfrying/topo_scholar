@@ -3,7 +3,7 @@
 [English](README_EN.md) · 中文
 
 ![Data](https://img.shields.io/badge/base_places-665%2C276-2f6f4e)
-![Knowledge](https://img.shields.io/badge/origin_records-2%2C665-b36b2c)
+![Knowledge](https://img.shields.io/badge/origin_records-2%2C928-b36b2c)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-315c96)
 ![Agent Ready](https://img.shields.io/badge/Agent%20Ready-CLI%20%7C%20MCP-4b5563)
 
@@ -32,7 +32,7 @@ TopoScholar 试图把这些问题变成结构化数据、可复现流水线和 A
 | 基础地名 `places` | 665,276 |
 | 行政层级边 `admin_edges` | 665,245 |
 | 别名索引 `place_aliases` | 2,981,225 |
-| 地名由来知识 `place_knowledge` | 2,665 |
+| 地名由来知识 `place_knowledge` | 2,928 |
 | 由来采集队列 `collection_queue` | 3,227 |
 
 | 基础层级 | 数量 |
@@ -47,7 +47,7 @@ TopoScholar 试图把这些问题变成结构化数据、可复现流水线和 A
 
 - 省级行政区：31/31 已补齐。
 - 可采集地级行政区：333/333 已补齐。
-- 县级行政区：已补齐 2,299 条，持续分批推进。
+- 县级行政区：已补齐 2,562 条，持续分批推进。
 - 村级样例：保留 `南高村`，用于验证村级别名与由来关联。
 
 ## 核心能力
