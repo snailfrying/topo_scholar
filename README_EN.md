@@ -150,7 +150,7 @@ See `docs/dataset_sources.md` for source details, licenses, and usage notes.
 - The five-level foundation is mainly based on 2023 statistical data and may not reflect the latest civil-affairs/geographical-name authority view.
 - `street/subdistrict` currently refers mainly to administrative subdistricts, not road/street names.
 - Hong Kong, Macao, and Taiwan are not included in the current five-level main table.
-- `place_knowledge` now contains official origin records for all 31 province-level administrative regions, 333 collectable prefecture-level administrative regions, 2,792 county-level administrative regions, and the Nangao Village example. The current county queue has no pending rows; 71 failed rows need manual audit or multi-source supplementation.
+- `place_knowledge` now contains official origin records for all 31 province-level administrative regions, 333 collectable prefecture-level administrative regions, 2,792 county-level administrative regions, and the Nangao Village example. The current county queue has no pending rows; 71 `needs_review` rows need manual audit or multi-source supplementation.
 - The China National Geographical Names Database should be queried and cached responsibly. Avoid high-frequency scraping or unauthorized redistribution.
 
 ## Roadmap

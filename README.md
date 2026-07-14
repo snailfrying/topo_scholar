@@ -47,7 +47,7 @@ TopoScholar 试图把这些问题变成结构化数据、可复现流水线和 A
 
 - 省级行政区：31/31 已补齐。
 - 可采集地级行政区：333/333 已补齐。
-- 县级行政区：可采集队列已跑完，已补齐 2,792 条，剩余 71 条失败项待人工审计或多源补充。
+- 县级行政区：可采集队列已跑完，已补齐 2,792 条，剩余 71 条 `needs_review` 项待人工审计或多源补充。
 - 村级样例：保留 `南高村`，用于验证村级别名与由来关联。
 
 ## 核心能力
@@ -154,6 +154,7 @@ python scripts\batch_fetch_origins.py --max-items 100 --levels county --sleep 0.
 - `data/processed/place_knowledge.csv`
 - `data/processed/collection_queue.csv`
 - `data/metadata/mca_candidate_audit.csv`
+- `data/metadata/origin_failed_review.csv`
 - `data/processed/topo_scholar.sqlite` 中的 `place_knowledge` 和 `place_knowledge_fts`
 
 ## 本地构建与校验
