@@ -3,7 +3,7 @@
 [English](README_EN.md) · 中文
 
 ![Data](https://img.shields.io/badge/base_places-665%2C276-2f6f4e)
-![Knowledge](https://img.shields.io/badge/origin_records-3%2C158-b36b2c)
+![Knowledge](https://img.shields.io/badge/origin_records-3%2C170-b36b2c)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-315c96)
 ![License](https://img.shields.io/badge/license-MIT-8a5cf6)
 ![Agent Ready](https://img.shields.io/badge/Agent%20Ready-CLI%20%7C%20MCP-4b5563)
@@ -33,7 +33,7 @@ TopoScholar 试图把这些问题变成结构化数据、可复现流水线和 A
 | 基础地名 `places` | 665,276 |
 | 行政层级边 `admin_edges` | 665,245 |
 | 别名索引 `place_aliases` | 2,981,225 |
-| 地名由来知识 `place_knowledge` | 3,158 |
+| 地名由来知识 `place_knowledge` | 3,170 |
 | 由来采集队列 `collection_queue` | 3,227 |
 
 | 基础层级 | 数量 |
@@ -48,7 +48,7 @@ TopoScholar 试图把这些问题变成结构化数据、可复现流水线和 A
 
 - 省级行政区：31/31 已补齐。
 - 可采集地级行政区：333/333 已补齐。
-- 县级行政区：可采集队列已跑完，已补齐 2,792 条，剩余 71 条 `needs_review` 项待人工审计或多源补充。
+- 县级行政区：国家地名信息库可采集队列已跑完，已补齐 2,792 条；另从地方政府/民政来源人工补入 12 条，当前剩余 59 条 `needs_review` 项待多源补充。
 - 村级样例：保留 `南高村`，用于验证村级别名与由来关联。
 
 ## 核心能力
@@ -148,6 +148,12 @@ python scripts\batch_fetch_origins.py --max-items 3 --dry-run
 
 # 小批量补齐县级地名由来；建议 workers 保持 2 左右，避免对来源站点造成压力
 python scripts\batch_fetch_origins.py --max-items 100 --levels county --sleep 0.6 --max-pages 3 --max-attempts 3 --workers 2
+
+# 导入人工复核的地方政府/民政来源记录
+python scripts\import_manual_origins.py
+
+# 为未命中项生成候选来源线索；候选需复核后再入库
+python scripts\discover_origin_sources.py --max-rows 20 --max-queries 3 --max-results 5 --sleep 1.0 --flush-each
 ```
 
 采集结果会写入：
@@ -156,6 +162,8 @@ python scripts\batch_fetch_origins.py --max-items 100 --levels county --sleep 0.
 - `data/processed/collection_queue.csv`
 - `data/metadata/mca_candidate_audit.csv`
 - `data/metadata/origin_failed_review.csv`
+- `data/metadata/manual_origin_records.csv`
+- `data/metadata/origin_source_candidates.csv`
 - `data/processed/topo_scholar.sqlite` 中的 `place_knowledge` 和 `place_knowledge_fts`
 
 ## 本地构建与校验
@@ -232,7 +240,7 @@ docs/           # 需求、数据方案、质量评估和发布策略
 - [x] 建立别名索引和基础消歧能力。
 - [x] 建立地名由来采集器、队列和候选审计。
 - [x] 补齐省级、可采集地级地名由来。
-- [ ] 继续补齐县级地名由来。
+- [ ] 继续补齐县级地名由来，优先处理剩余 59 条 `needs_review` 和乡镇/街道来源发现。
 - [ ] 建立地名命名类型标签：姓氏、方位、水文、地形、迁徙、屯垦、历史人物等。
 - [ ] 扩展 BM25/向量检索，支持“因水得名”“洪洞移民”等主题研究。
 - [ ] 区分行政街道和道路街巷，接入道路地名数据。
