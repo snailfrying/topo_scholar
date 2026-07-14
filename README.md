@@ -5,6 +5,7 @@
 ![Data](https://img.shields.io/badge/base_places-665%2C276-2f6f4e)
 ![Knowledge](https://img.shields.io/badge/origin_records-3%2C158-b36b2c)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-315c96)
+![License](https://img.shields.io/badge/license-MIT-8a5cf6)
 ![Agent Ready](https://img.shields.io/badge/Agent%20Ready-CLI%20%7C%20MCP-4b5563)
 
 **华夏地名谱**是一个面向 Agent、RAG 和地名研究的中国地名知识底座：它不只保存“有哪些地名”，还要持续回答“这个地名为什么这么叫”。
@@ -257,6 +258,6 @@ docs/           # 需求、数据方案、质量评估和发布策略
 
 ## 许可证与合规
 
-代码和本项目文档的许可证后续会单独声明。第三方数据保留其原始许可证和来源说明；使用、分发或商用前请自行确认对应数据源的许可条款。
+本项目代码和项目自有文档采用 MIT License，详见 `LICENSE`。第三方数据保留其原始许可证和来源说明；使用、分发或商用前请自行确认对应数据源的许可条款。
 
 对于地名由来资料，本项目强调来源记录、证据留存和置信度标注；没有可靠来源时，Agent 不应编造地名由来。

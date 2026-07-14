@@ -173,6 +173,6 @@ See `docs/dataset_sources.md` for source details, licenses, and usage notes.
 
 ## License and Compliance
 
-A dedicated license for the project code and documentation will be added later. Third-party data keeps its original license and source attribution. Please review the corresponding data-source license before redistribution or commercial use.
+The project code and project-owned documentation are licensed under the MIT License. See `LICENSE` for details. Third-party data keeps its original license and source attribution. Please review the corresponding data-source license before redistribution or commercial use.
 
 For name-origin knowledge, TopoScholar emphasizes source tracking, evidence retention, and confidence labels. Agents should not fabricate name origins when reliable sources are unavailable.
