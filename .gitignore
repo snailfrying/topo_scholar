@@ -8,6 +8,34 @@ __pycache__/
 data/cache/
 data/interim/*
 
+# Local scrape/API artifacts. Keep normalized, reviewed CSVs only.
+data/**/*.html
+data/**/*.htm
+data/**/*.jsonl
+data/**/*.ndjson
+data/**/*response*.json
+data/**/*cache*.json
+data/**/*raw*.json
+
+# Local database and geospatial outputs. These require separate release/licensing review.
+*.sqlite
+*.sqlite3
+*.db
+*.duckdb
+data/**/*.geojson
+data/**/*.topojson
+data/**/*.shp
+data/**/*.shx
+data/**/*.dbf
+data/**/*.prj
+data/**/*.cpg
+data/**/*.gpkg
+data/**/*.mbtiles
+data/**/ok_geo*
+data/**/map_geo*
+data/**/*boundary*
+data/**/*polygon*
+
 # Generated heavy outputs. They are rebuilt by scripts/build_places.py and scripts/build_sqlite.py.
 data/processed/*
 !data/processed/.gitkeep

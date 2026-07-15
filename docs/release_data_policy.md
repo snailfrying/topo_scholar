@@ -16,6 +16,8 @@
 - 本地 SQLite 生成物。
 - 巨大的标准化 CSV 生成物。
 - API 响应缓存。
+- 原始抓取 HTML、接口 JSON 和未复核页面快照。
+- 坐标、边界、Shapefile、GeoJSON、地图瓦片等空间几何数据。
 - 上游数据仓库的嵌套 `.git`。
 - IDE 配置和 Python 缓存。
 
@@ -52,6 +54,8 @@
 
 用途：保存已经采集并标准化的地名由来样例，以及省/市/县三级优先采集队列。
 
+许可边界：`place_knowledge.csv` 中的第三方来源内容不随项目代码改用 MIT；每条记录必须保留来源、证据摘录、置信度和来源类型。更完整的原文、接口响应和网页快照只能保存在本地缓存，不进入普通 Git。
+
 ## 3. 不会提交的数据
 
 这些文件体积大或属于本地缓存：
@@ -62,6 +66,12 @@
 - `data/cache/`
 - `data/interim/`
 - `data/raw/**/.git`
+- `data/**/*.html`
+- `data/**/*raw*.json`
+- `data/**/*response*.json`
+- `data/**/*.geojson`
+- `data/**/*.shp`
+- `data/**/ok_geo*`
 
 ## 4. Clone 后如何使用
 

@@ -173,6 +173,8 @@ See `docs/dataset_sources.md` for source details, licenses, and usage notes.
 
 ## License and Compliance
 
-The project code and project-owned documentation are licensed under the MIT License. See `LICENSE` for details. Third-party data keeps its original license and source attribution. Please review the corresponding data-source license before redistribution or commercial use.
+The project-owned code and documentation are licensed under the MIT License. See `LICENSE`. Data files, third-party source content, and derived knowledge records are not automatically relicensed as MIT; they keep their original source licenses, attribution requirements, and usage boundaries. See `DATA_LICENSE.md` and `docs/dataset_sources.md`.
 
 For name-origin knowledge, TopoScholar emphasizes source tracking, evidence retention, and confidence labels. Agents should not fabricate name origins when reliable sources are unavailable.
+
+The normal Git repository does not commit API response caches, raw HTML/JSON, SQLite databases, local database files, coordinate/boundary data, Shapefiles, GeoJSON, or map tiles. Spatial data or large database releases require a separate license, size, and geospatial compliance review.
