@@ -8,7 +8,7 @@
 | P1 | modood 行政区划数据 | https://github.com/modood/Administrative-divisions-of-China | 五级行政区划 JSON/CSV/SQLite | 适合 MVP，更新至 2023 后停止维护 |
 | P1 | AreaCity 数据 | https://github.com/xiangyuecn/AreaCity-JsSpider-StatsGov | 四级行政区划、拼音、坐标、边界 | 可补空间信息和拼音 |
 | P2 | Geofabrik OSM China | https://download.geofabrik.de/asia/china.html | 道路街巷、POI、线面几何 | 遵守 ODbL，和行政/地名库分层使用 |
-| P2 | 地方政府/民政局/地方志/地名志 | 分散网页/PDF/图书 | 补充地名由来和历史沿革 | 已用于补齐 47 条国家地名信息库未命中的县级记录；需要证据抽取和版权控制 |
+| P2 | 地方政府/民政局/地方志/地名志 | 分散网页/PDF/图书 | 补充地名由来和历史沿革 | 已用于补齐 50 条国家地名信息库未命中的县级记录；需要证据抽取和版权控制 |
 
 ## 首批落地数据
 
