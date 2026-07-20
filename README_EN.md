@@ -17,14 +17,14 @@ TopoScholar is not just another administrative-division table. It aims to build 
 
 ## Current Data Size
 
-Official origin, meaning, and history records have been collected for all 31 province-level administrative regions, 333 collectable prefecture-level administrative regions, 2,793 county-level administrative regions via the national database, 50 manually verified supplemental county records, and the Nangao Village example. See `data/metadata/quality_report.json` and `docs/quality_assessment.md` for the latest validation report.
+Official origin, meaning, and history records have been collected for all 31 province-level administrative regions, 333 collectable prefecture-level administrative regions, 2,793 county-level administrative regions via the national database, 70 manually verified supplemental and special-area records, and the Nangao Village example. See `data/metadata/quality_report.json` and `docs/quality_assessment.md` for the latest validation report.
 
 | Table | Count |
 |---|---:|
 | `places` | 665,276 |
 | `admin_edges` | 665,245 |
 | `place_aliases` | 2,981,225 |
-| `place_knowledge` | 3,209 |
+| `place_knowledge` | 3,229 |
 | `collection_queue` | 3,227 |
 
 By level:
@@ -150,12 +150,13 @@ See `docs/dataset_sources.md` for source details, licenses, and usage notes.
 - The five-level foundation is mainly based on 2023 statistical data and may not reflect the latest civil-affairs/geographical-name authority view.
 - `street/subdistrict` currently refers mainly to administrative subdistricts, not road/street names.
 - Hong Kong, Macao, and Taiwan are not included in the current five-level main table.
-- `place_knowledge` now contains official origin records for all 31 province-level administrative regions, 333 collectable prefecture-level administrative regions, 2,793 county-level administrative regions via the national database, 50 manually verified supplemental county records, and the Nangao Village example. The current county queue has no pending rows; 20 `needs_review` rows need manual audit or multi-source supplementation.
+- `place_knowledge` now contains official origin records for all 31 province-level administrative regions, 333 collectable prefecture-level administrative regions, 2,793 county-level administrative regions via the national database, 70 manually verified supplemental and special-area records, and the Nangao Village example. The current county/special-area queue has no pending rows and no `needs_review` rows.
 - The China National Geographical Names Database should be queried and cached responsibly. Avoid high-frequency scraping or unauthorized redistribution.
 
 ## Roadmap
 
-- [ ] Continue county-level enrichment, prioritizing the remaining 20 `needs_review` rows and township/subdistrict source discovery.
+- [x] Clear standard county-level and special/functional-area `needs_review` rows.
+- [ ] Improve confidence for special-area records and start township/subdistrict origin source discovery.
 - [x] Add initial SQLite FTS5 support for cached origin knowledge.
 - [ ] Extend BM25/vector search for topic queries such as water-related names or Hongdong migration.
 - [ ] Add naming-type labels: surname, direction, hydrology, terrain, migration, military colony, historical figures, and more.

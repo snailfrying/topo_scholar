@@ -124,10 +124,14 @@ def knowledge_row(manual: dict[str, str], queue_row: dict[str, str] | None, now:
 
 
 def upsert_knowledge(rows: list[dict[str, str]]) -> None:
-    existing = {row["id"]: row for row in read_csv(KNOWLEDGE_CSV)}
-    for row in rows:
-        existing[row["id"]] = row
-    write_csv(KNOWLEDGE_CSV, list(existing.values()), KNOWLEDGE_FIELDS)
+    incoming_ids = {row["id"] for row in rows}
+    incoming_source_ids = {row["source_place_id"] for row in rows if row.get("source_place_id")}
+    existing = [
+        row
+        for row in read_csv(KNOWLEDGE_CSV)
+        if row.get("id") not in incoming_ids and row.get("source_place_id") not in incoming_source_ids
+    ]
+    write_csv(KNOWLEDGE_CSV, existing + rows, KNOWLEDGE_FIELDS)
 
 
 def update_queue(manual_rows: list[dict[str, str]], queue_rows: list[dict[str, str]], now: str) -> None:
