@@ -168,6 +168,7 @@ See `docs/dataset_sources.md` for source details, licenses, and usage notes.
 
 - `docs/requirements.md`: product requirements and capability planning.
 - `docs/data_plan.md`: data construction plan.
+- `docs/town_village_collection_plan.md`: next-stage collection assessment for townships/subdistricts and villages/communities.
 - `docs/tool_contracts.md`: CLI/MCP tool contracts.
 - `docs/quality_assessment.md`: data quality assessment and optimization roadmap.
 - `docs/release_data_policy.md`: repository data release policy.

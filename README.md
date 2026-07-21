@@ -262,6 +262,7 @@ docs/           # 需求、数据方案、质量评估和发布策略
 - `docs/requirements.md`：产品需求与能力规划。
 - `docs/data_plan.md`：数据建设方案。
 - `docs/origin_enrichment.md`：地名由来补齐方案。
+- `docs/town_village_collection_plan.md`：乡镇/街道与村/社区下一阶段采集评估。
 - `docs/tool_contracts.md`：CLI/MCP 工具接口契约。
 - `docs/quality_assessment.md`：数据质量评估与优化路线。
 - `docs/release_data_policy.md`：仓库数据提交策略。
