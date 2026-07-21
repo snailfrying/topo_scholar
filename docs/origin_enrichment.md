@@ -121,4 +121,4 @@ python scripts\discover_origin_sources.py --max-rows 20 --max-queries 3 --max-re
 - 已保留南高村村级样例，用于验证村级别名匹配。
 - 当前 `place_knowledge` 共 3,229 条，全部关联到本地基础地名实体。
 - `data/metadata/mca_candidate_audit.csv` 记录候选打分和最终选择，便于追溯是否选错。
-- 县级行政区已通过国家地名信息库补齐 2,793 条，并从地方政府、民政、地方志及待复核参考来源人工补入 70 条；当前县级/特殊区域队列已无 pending 项，needs_review 项为 0，后续重点转为提升特殊区域置信度和扩展乡镇/街道来源。
+- 县级行政区已通过国家地名信息库补齐 2,793 条，并从地方政府、民政、地方志及待复核参考来源人工补入 70 条；当前县级/特殊区域队列已无 pending 项，needs_review 项为 0。手工补充记录中高置信 47 条、中置信 23 条，`reference_only` 已收敛到 2 条，后续重点转为补强剩余兵团城市官方史志来源和扩展乡镇/街道来源。

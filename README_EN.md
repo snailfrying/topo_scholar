@@ -17,7 +17,7 @@ TopoScholar is not just another administrative-division table. It aims to build 
 
 ## Current Data Size
 
-Official origin, meaning, and history records have been collected for all 31 province-level administrative regions, 333 collectable prefecture-level administrative regions, 2,793 county-level administrative regions via the national database, 70 manually verified supplemental and special-area records, and the Nangao Village example. See `data/metadata/quality_report.json` and `docs/quality_assessment.md` for the latest validation report.
+Official origin, meaning, and history records have been collected for all 31 province-level administrative regions, 333 collectable prefecture-level administrative regions, 2,793 county-level administrative regions via the national database, 70 manually verified supplemental and special-area records, and the Nangao Village example. Manual supplemental records currently include 47 high-confidence and 23 medium-confidence entries, with only 2 `reference_only` records still awaiting stronger official/local gazetteer sources. See `data/metadata/quality_report.json` and `docs/quality_assessment.md` for the latest validation report.
 
 | Table | Count |
 |---|---:|
