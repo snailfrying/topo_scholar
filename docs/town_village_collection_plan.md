@@ -2,14 +2,14 @@
 
 ## 1. 结论
 
-下一阶段如果覆盖当前五级基础库中的全部乡镇/街道与村/社区，需要新增约 **661,924** 条地名由来知识：
+在已快速采集首批行政街道后，如果覆盖当前五级基础库中的全部乡镇/街道与村/社区，还需要新增约 **661,627** 条地名由来知识：
 
 | 范围 | 基础库数量 | 当前已有由来 | 待采集 |
 |---|---:|---:|---:|
-| 乡镇/街道级全部实体 | 41,352 | 0 | 41,352 |
-| 其中：行政街道办事处 | 9,112 | 0 | 9,112 |
+| 乡镇/街道级全部实体 | 41,352 | 297 | 41,055 |
+| 其中：行政街道办事处 | 9,112 | 297 | 8,815 |
 | 村/社区级全部实体 | 620,573 | 1 | 620,572 |
-| 合计（乡镇/街道级 + 村/社区级） | 661,925 | 1 | 661,924 |
+| 合计（乡镇/街道级 + 村/社区级） | 661,925 | 298 | 661,627 |
 
 这里的“街道”有两种口径：
 
@@ -17,6 +17,16 @@
 2. **道路街巷**：如“中山路”“人民街”“解放巷”，当前基础库尚未收录，不能和行政街道混为一类，需要另建 `road/street_road` 实体和单独来源体系。
 
 因此下一阶段建议先做“行政乡镇/街道 + 村/社区”，道路街巷作为独立工程排期。
+
+### 1.1 已启动的快速采集
+
+已新增独立试点队列 `data/processed/collection_queue_next_stage.csv`，当前只放入行政街道试点项：
+
+| 队列 | 总量 | 已完成 | 待采集 | 待复核 |
+|---|---:|---:|---:|---:|
+| `admin_street_pilot` | 9,112 | 297 | 8,811 | 4 |
+
+已完成的 297 条均来自中国·国家地名信息库，写入 `place_knowledge.csv`，并通过本地 `place_id` 关联校验。4 条 `needs_review` 暂不强行写入，后续通过地方政府/地方志慢慢复核。
 
 ## 2. 当前基础库规模拆解
 
@@ -110,7 +120,7 @@
 
 ### 5.1 队列设计
 
-不要把 661,924 条待采集项一次性塞入当前 `collection_queue.csv`。建议新增分阶段队列：
+不要把 661,627 条待采集项一次性塞入当前 `collection_queue.csv`。建议新增分阶段队列：
 
 - `data/processed/collection_queue_town.csv`
 - `data/processed/collection_queue_village_seed.csv`
@@ -135,6 +145,14 @@
 5. 保存 `evidence_url`、`evidence_title`、`evidence_quote`、`raw_hash`、`confidence`。
 6. 定期导入 `place_knowledge.csv`，重建 SQLite，跑 `validate_data.py`。
 
+当前可执行命令：
+
+```powershell
+python scripts\build_next_stage_queue.py --phase admin_street_pilot --overwrite
+python scripts\batch_fetch_next_stage_origins.py --max-items 100 --sleep 0.5 --max-pages 1 --workers 2
+python scripts\validate_data.py
+```
+
 ### 5.3 并发与反爬
 
 原则：以缓存、限速、断点续跑为主，不做绕过式采集。
@@ -146,7 +164,7 @@
 
 ## 6. 数据入库与仓库体积评估
 
-当前 `place_knowledge.csv` 约 6.9 MB / 3,229 条，平均每条约 2 KB。若 661,924 条全部写入单个 CSV，粗略可能超过 1 GB，不适合直接进入普通 Git 仓库。
+当前 `place_knowledge.csv` 约 7.6 MB / 3,526 条，平均每条约 2 KB。若剩余 661,627 条全部写入单个 CSV，粗略可能超过 1 GB，不适合直接进入普通 Git 仓库。
 
 推荐策略：
 

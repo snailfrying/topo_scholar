@@ -261,14 +261,14 @@ def get_place_origin(
     clauses = ["k.standard_name = ?"]
     params: list[Any] = [name]
     if province:
-        clauses.append("k.province = ?")
-        params.append(province)
+        clauses.append("(k.province = ? OR p.province = ?)")
+        params.extend([province, province])
     if city:
-        clauses.append("k.city = ?")
-        params.append(city)
+        clauses.append("(k.city = ? OR p.city = ?)")
+        params.extend([city, city])
     if county:
-        clauses.append("k.county = ?")
-        params.append(county)
+        clauses.append("(k.county = ? OR p.county = ?)")
+        params.extend([county, county])
     params.append(limit)
 
     sql = f"""
@@ -312,14 +312,14 @@ def search_knowledge(
             fts_clauses = ["place_knowledge_fts MATCH ?"]
             fts_params: list[Any] = [keyword]
             if province:
-                fts_clauses.append("k.province = ?")
-                fts_params.append(province)
+                fts_clauses.append("(k.province = ? OR p.province = ?)")
+                fts_params.extend([province, province])
             if city:
-                fts_clauses.append("k.city = ?")
-                fts_params.append(city)
+                fts_clauses.append("(k.city = ? OR p.city = ?)")
+                fts_params.extend([city, city])
             if county:
-                fts_clauses.append("k.county = ?")
-                fts_params.append(county)
+                fts_clauses.append("(k.county = ? OR p.county = ?)")
+                fts_params.extend([county, county])
             fts_params.append(limit)
             fts_sql = f"""
                 SELECT k.id, k.place_id, k.source_place_id, k.standard_name, k.province, k.city, k.county,
@@ -351,14 +351,14 @@ def search_knowledge(
     like = f"%{keyword}%"
     params: list[Any] = [like, like, like, like]
     if province:
-        clauses.append("k.province = ?")
-        params.append(province)
+        clauses.append("(k.province = ? OR p.province = ?)")
+        params.extend([province, province])
     if city:
-        clauses.append("k.city = ?")
-        params.append(city)
+        clauses.append("(k.city = ? OR p.city = ?)")
+        params.extend([city, city])
     if county:
-        clauses.append("k.county = ?")
-        params.append(county)
+        clauses.append("(k.county = ? OR p.county = ?)")
+        params.extend([county, county])
     params.append(limit)
 
     sql = f"""

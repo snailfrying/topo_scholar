@@ -3,7 +3,7 @@
 [English](README_EN.md) · 中文
 
 ![Data](https://img.shields.io/badge/base_places-665%2C276-2f6f4e)
-![Knowledge](https://img.shields.io/badge/origin_records-3%2C229-b36b2c)
+![Knowledge](https://img.shields.io/badge/origin_records-3%2C526-b36b2c)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-315c96)
 ![License](https://img.shields.io/badge/license-MIT-8a5cf6)
 ![Agent Ready](https://img.shields.io/badge/Agent%20Ready-CLI%20%7C%20MCP-4b5563)
@@ -33,7 +33,7 @@ TopoScholar 试图把这些问题变成结构化数据、可复现流水线和 A
 | 基础地名 `places` | 665,276 |
 | 行政层级边 `admin_edges` | 665,245 |
 | 别名索引 `place_aliases` | 2,981,225 |
-| 地名由来知识 `place_knowledge` | 3,229 |
+| 地名由来知识 `place_knowledge` | 3,526 |
 | 由来采集队列 `collection_queue` | 3,227 |
 
 | 基础层级 | 数量 |
@@ -50,6 +50,7 @@ TopoScholar 试图把这些问题变成结构化数据、可复现流水线和 A
 - 可采集地级行政区：333/333 已补齐。
 - 县级及特殊区域：国家地名信息库可采集队列已跑完，已补齐 2,793 条；另从地方政府、民政、地方志及待复核参考来源人工补入 70 条，当前县级/特殊区域 `needs_review` 为 0。
 - 手工补充来源质量：高置信 49 条、中置信 21 条；`reference_only` 已清零，后续重点把媒体来源继续替换为官方史志/地方志原文。
+- 行政街道试点：已生成 9,112 条独立下一阶段队列，先快速采集 297 条官方来源记录，4 条进入 `needs_review` 慢慢复核。
 - 村级样例：保留 `南高村`，用于验证村级别名与由来关联。
 
 ## 核心能力
