@@ -242,10 +242,14 @@ def match_local_place(conn: sqlite3.Connection, detail: dict[str, Any]) -> str:
     province = detail.get("province_name") or ""
     city = detail.get("city_name") or ""
     county = detail.get("area_name") or ""
-
     candidates = local_candidates(conn, name, province=province, city=city, county=county, limit=5)
     if candidates:
         return candidates[0]["id"]
+
+    if city and not county:
+        candidates = local_candidates(conn, name, province=province, county=city, limit=5)
+        if candidates:
+            return candidates[0]["id"]
 
     candidates = local_candidates(conn, name, province=province, city=city, limit=5)
     if candidates:
@@ -300,19 +304,23 @@ def normalize_knowledge(conn: sqlite3.Connection, detail: dict[str, Any]) -> dic
     source_place_id = detail.get("id") or ""
     standard_name = detail.get("standard_name") or ""
     row_id = stable_id(SOURCE, source_place_id, standard_name)
+
+    def clean(key: str) -> str:
+        return (detail.get(key) or "").strip()
+
     return {
         "id": row_id,
         "place_id": match_local_place(conn, detail),
         "source_place_id": source_place_id,
         "standard_name": standard_name,
-        "province": detail.get("province_name") or "",
-        "city": detail.get("city_name") or "",
-        "county": detail.get("area_name") or "",
-        "place_type": detail.get("place_type") or "",
-        "origin": detail.get("place_origin") or "",
-        "meaning": detail.get("place_meaning") or "",
-        "history": detail.get("place_history") or "",
-        "old_names": detail.get("old_name") or "",
+        "province": clean("province_name"),
+        "city": clean("city_name"),
+        "county": clean("area_name"),
+        "place_type": clean("place_type"),
+        "origin": clean("place_origin"),
+        "meaning": clean("place_meaning"),
+        "history": clean("place_history"),
+        "old_names": clean("old_name"),
         "evidence_url": SOURCE_URL,
         "evidence_title": SOURCE,
         "evidence_quote": evidence_quote(detail),

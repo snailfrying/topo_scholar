@@ -1,6 +1,6 @@
 scope,count,current_knowledge,remaining,priority,note
-admin_subdistrict_only,9112,297,8815,P0,Administrative streets ending with 街道; not road/street names.
-town_level_all,41352,297,41055,P1,All township-level entities including 镇/乡/街道/苏木 and nonstandard areas.
+admin_subdistrict_only,9112,8373,739,P0,Administrative streets ending with 街道; not road/street names.
+town_level_all,41352,8373,32979,P1,All township-level entities including 镇/乡/街道/苏木 and nonstandard areas.
 village_level_all,620573,1,620572,P2-P3,All village/community-level entities; current knowledge only keeps Nangao Village sample.
-town_plus_village_all,661925,298,661627,P1-P3,Full next-stage administrative town/village coverage.
+town_plus_village_all,661925,8374,653551,P1-P3,Full next-stage administrative town/village coverage.
 road_street_names,0,0,unknown,P4,Not present in current base data; requires a separate road/street entity source.

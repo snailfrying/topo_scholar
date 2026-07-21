@@ -37,10 +37,12 @@ def read_queue(path: Path) -> list[dict[str, str]]:
 
 
 def write_queue(path: Path, rows: list[dict[str, str]]) -> None:
-    with path.open("w", encoding="utf-8", newline="") as f:
+    tmp_path = path.with_suffix(f"{path.suffix}.tmp")
+    with tmp_path.open("w", encoding="utf-8", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=FIELDS)
         writer.writeheader()
         writer.writerows(rows)
+    tmp_path.replace(path)
 
 
 def already_has_knowledge(place_id: str) -> bool:
