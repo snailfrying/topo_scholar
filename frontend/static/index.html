@@ -1,0 +1,151 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>华夏地名谱 TopoScholar</title>
+    <link rel="stylesheet" href="/styles.css?v=20260722-3" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero" aria-labelledby="page-title">
+        <div>
+          <p class="eyebrow">TopoScholar Data Browser</p>
+          <h1 id="page-title">华夏地名谱</h1>
+          <p class="hero-copy">搜索地名、查看由来、按地图和类别快速筛选。</p>
+        </div>
+        <div class="hero-actions">
+          <button class="button primary" id="refreshButton" type="button">刷新数据</button>
+          <a class="button ghost" href="/api/summary" target="_blank" rel="noreferrer">API 摘要</a>
+        </div>
+      </section>
+
+      <section class="stats-grid" id="statsGrid" aria-label="数据概览"></section>
+
+      <section class="panel map-panel" aria-labelledby="map-title">
+        <div class="panel-title">
+          <span id="map-title">地图筛选</span>
+          <small>点击省份后，自动筛选下方列表</small>
+        </div>
+        <div class="map-layout">
+          <svg id="chinaMap" class="map" role="img" aria-label="中国省级覆盖气泡图"></svg>
+          <div class="map-detail" id="mapDetail">
+            <strong>全国视图</strong>
+            <span>展示省级基础地名数量与由来知识覆盖。</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="workspace">
+        <aside class="panel filters" aria-label="筛选条件">
+          <div class="panel-title">
+            <span>检索</span>
+            <small id="resultCount">准备就绪</small>
+          </div>
+
+          <label class="field">
+            <span>关键词</span>
+            <input id="keywordInput" type="search" placeholder="例如：武汉 / 八里庄 / 洪洞" autocomplete="off" />
+          </label>
+
+          <label class="field">
+            <span>数据表</span>
+            <select id="datasetSelect">
+              <option value="knowledge">名字由来知识</option>
+              <option value="places">全部基础地名</option>
+              <option value="queue">采集队列</option>
+            </select>
+          </label>
+
+          <label class="field dataset-only dataset-places">
+            <span>基础类别</span>
+            <select id="levelSelect">
+              <option value="">全部层级</option>
+              <option value="province">省级</option>
+              <option value="city">地级</option>
+              <option value="county">县级</option>
+              <option value="town">乡镇/街道</option>
+              <option value="village">村/社区</option>
+            </select>
+          </label>
+
+          <label class="field dataset-only dataset-knowledge">
+            <span>知识类别</span>
+            <select id="placeTypeSelect">
+              <option value="">全部类型</option>
+            </select>
+          </label>
+
+          <label class="field dataset-only dataset-knowledge">
+            <span>来源类型</span>
+            <select id="sourceTypeSelect">
+              <option value="">全部来源</option>
+            </select>
+          </label>
+
+          <label class="field dataset-only dataset-knowledge">
+            <span>置信度</span>
+            <select id="confidenceSelect">
+              <option value="">全部置信度</option>
+            </select>
+          </label>
+
+          <label class="field dataset-only dataset-queue">
+            <span>队列状态</span>
+            <select id="statusSelect">
+              <option value="">全部状态</option>
+              <option value="done">done</option>
+              <option value="needs_review">needs_review</option>
+              <option value="pending">pending</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>省份</span>
+            <select id="provinceSelect">
+              <option value="">全国</option>
+            </select>
+          </label>
+
+          <label class="field compact">
+            <span>每页数量</span>
+            <select id="limitSelect">
+              <option value="10" selected>10</option>
+              <option value="20">20</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+            </select>
+          </label>
+
+          <div class="filter-actions">
+            <button class="button primary" id="searchButton" type="button">搜索</button>
+            <button class="button ghost" id="resetButton" type="button">重置</button>
+          </div>
+        </aside>
+
+        <section class="panel results" aria-live="polite">
+          <div class="panel-title">
+            <span id="resultsTitle">名字由来知识</span>
+            <small id="resultsHint">每页展示更少，卡片内容更完整</small>
+          </div>
+          <div class="result-list" id="resultList"></div>
+          <div class="pager bottom-pager">
+            <button class="mini" id="prevButton" type="button">上一页</button>
+            <span id="pageInfo">1 / 1</span>
+            <button class="mini" id="nextButton" type="button">下一页</button>
+            <button class="mini ghost-mini" id="backTopButton" type="button">回到顶部</button>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <template id="emptyTemplate">
+      <div class="empty-state">
+        <strong>没有找到结果</strong>
+        <span>换一个关键词，或放宽省份/类别筛选。</span>
+      </div>
+    </template>
+
+    <script src="/app.js?v=20260722-3" type="module"></script>
+  </body>
+</html>

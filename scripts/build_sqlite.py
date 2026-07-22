@@ -136,6 +136,7 @@ def main() -> None:
         build_aliases(conn)
 
         conn.execute("CREATE INDEX IF NOT EXISTS idx_places_code ON places(code)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_places_id ON places(id)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_places_name ON places(name)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_places_full_name ON places(full_name)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_places_level ON places(level)")
