@@ -1,8 +1,12 @@
 import argparse
 import csv
+import os
 import sqlite3
 import subprocess
 import sys
+import tempfile
+import threading
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
@@ -18,6 +22,7 @@ from topo_scholar.bootstrap import ensure_database
 
 
 DB_PATH = ROOT / "data" / "processed" / "topo_scholar.sqlite"
+QUEUE_WRITE_LOCK = threading.Lock()
 
 PLACE_TYPE_BY_LEVEL = {
     "town": "乡级行政区",
@@ -37,12 +42,34 @@ def read_queue(path: Path) -> list[dict[str, str]]:
 
 
 def write_queue(path: Path, rows: list[dict[str, str]]) -> None:
-    tmp_path = path.with_suffix(f"{path.suffix}.tmp")
-    with tmp_path.open("w", encoding="utf-8", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=FIELDS)
-        writer.writeheader()
-        writer.writerows(rows)
-    tmp_path.replace(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with QUEUE_WRITE_LOCK:
+        fd, tmp_name = tempfile.mkstemp(
+            prefix=f"{path.stem}.",
+            suffix=f".{os.getpid()}.tmp",
+            dir=str(path.parent),
+            text=True,
+        )
+        tmp_path = Path(tmp_name)
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8", newline="") as f:
+                writer = csv.DictWriter(f, fieldnames=FIELDS)
+                writer.writeheader()
+                writer.writerows(rows)
+            last_error: PermissionError | None = None
+            for attempt in range(12):
+                try:
+                    tmp_path.replace(path)
+                    last_error = None
+                    break
+                except PermissionError as exc:
+                    last_error = exc
+                    time.sleep(0.25 * (attempt + 1))
+            if last_error is not None:
+                raise last_error
+        except Exception:
+            tmp_path.unlink(missing_ok=True)
+            raise
 
 
 def already_has_knowledge(place_id: str) -> bool:
@@ -95,8 +122,10 @@ def fetch_row(row: dict[str, str], sleep_seconds: float, dry_run: bool, max_page
     return "needs_review", warnings or "no_saved_record"
 
 
-def should_process(row: dict[str, str], phases: set[str], max_attempts: int) -> bool:
+def should_process(row: dict[str, str], phases: set[str], max_attempts: int, include_review: bool) -> bool:
     if phases and row.get("collection_phase") not in phases:
+        return False
+    if row["status"] == "needs_review" and not include_review:
         return False
     if row["status"] not in {"pending", "failed", "needs_review"}:
         return False
@@ -131,6 +160,8 @@ def main() -> None:
     parser.add_argument("--max-pages", type=int, default=2)
     parser.add_argument("--max-attempts", type=int, default=2)
     parser.add_argument("--workers", type=int, default=1)
+    parser.add_argument("--flush-every", type=int, default=50, help="Write queue progress every N completed rows.")
+    parser.add_argument("--include-review", action="store_true", help="Retry rows marked needs_review; default keeps them for manual review later.")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--rebuild-queue", action="store_true")
     args = parser.parse_args()
@@ -140,9 +171,10 @@ def main() -> None:
         build_queue(next(iter(phases or {"admin_street_pilot"})), args.queue)
 
     queue = read_queue(args.queue)
-    selected = [row for row in queue if should_process(row, phases, args.max_attempts)][: args.max_items]
+    selected = [row for row in queue if should_process(row, phases, args.max_attempts, args.include_review)][: args.max_items]
     now = utc_now()
     processed = 0
+    flush_every = max(1, args.flush_every)
 
     if args.workers <= 1 or args.dry_run:
         for row in selected:
@@ -151,8 +183,10 @@ def main() -> None:
             update_row(row, status, error, now, args.dry_run)
             processed += 1
             print(f"  result={status} error={error}")
-            if not args.dry_run:
+            if not args.dry_run and processed % flush_every == 0:
                 write_queue(args.queue, queue)
+        if selected and not args.dry_run:
+            write_queue(args.queue, queue)
     else:
         workers = max(1, args.workers)
         print(f"Processing {len(selected)} rows with {workers} workers")
@@ -163,7 +197,10 @@ def main() -> None:
                 update_row(row, status, error, now, False)
                 processed += 1
                 print(f"  result={status} {row['name']} error={error}")
-                write_queue(args.queue, queue)
+                if processed % flush_every == 0:
+                    write_queue(args.queue, queue)
+        if selected:
+            write_queue(args.queue, queue)
 
     if not args.dry_run:
         subprocess.check_call([sys.executable, str(ROOT / "scripts" / "build_sqlite.py")], cwd=str(ROOT))

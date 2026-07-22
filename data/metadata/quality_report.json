@@ -4,8 +4,9 @@
     "places": 665276,
     "admin_edges": 665245,
     "place_aliases": 2981225,
-    "place_knowledge": 11602,
-    "collection_queue": 3227
+    "place_knowledge": 25590,
+    "collection_queue": 3227,
+    "collection_queue_next_stage": 50464
   },
   "places_by_level": [
     {

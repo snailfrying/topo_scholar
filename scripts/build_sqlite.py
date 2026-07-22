@@ -133,6 +133,9 @@ def main() -> None:
         queue_csv = PROCESSED_DIR / "collection_queue.csv"
         if queue_csv.exists():
             load_csv(conn, "collection_queue", queue_csv)
+        next_stage_queue_csv = PROCESSED_DIR / "collection_queue_next_stage.csv"
+        if next_stage_queue_csv.exists():
+            load_csv(conn, "collection_queue_next_stage", next_stage_queue_csv)
         build_aliases(conn)
 
         conn.execute("CREATE INDEX IF NOT EXISTS idx_places_code ON places(code)")
@@ -164,6 +167,11 @@ def main() -> None:
             conn.execute("CREATE INDEX IF NOT EXISTS idx_collection_queue_status ON collection_queue(status)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_collection_queue_priority ON collection_queue(priority)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_collection_queue_place_id ON collection_queue(place_id)")
+        if next_stage_queue_csv.exists():
+            conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_collection_queue_next_stage_id ON collection_queue_next_stage(id)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_collection_queue_next_stage_status ON collection_queue_next_stage(status)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_collection_queue_next_stage_phase ON collection_queue_next_stage(collection_phase)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_collection_queue_next_stage_place_id ON collection_queue_next_stage(place_id)")
         conn.commit()
 
         count = conn.execute("SELECT COUNT(*) FROM places").fetchone()[0]
@@ -176,6 +184,9 @@ def main() -> None:
         if queue_csv.exists():
             queue_count = conn.execute("SELECT COUNT(*) FROM collection_queue").fetchone()[0]
             print(f"Wrote {queue_count} collection queue rows to {DB_PATH}")
+        if next_stage_queue_csv.exists():
+            next_queue_count = conn.execute("SELECT COUNT(*) FROM collection_queue_next_stage").fetchone()[0]
+            print(f"Wrote {next_queue_count} next-stage queue rows to {DB_PATH}")
 
 
 if __name__ == "__main__":

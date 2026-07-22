@@ -160,7 +160,7 @@ def build_queue(phase: str, output: Path, limit: int = 0, overwrite: bool = Fals
                     "updated_at": now,
                 }
             )
-            if status == "done" and row.get("status") == "pending":
+            if status == "done" and row.get("status") != "done":
                 row["status"] = "done"
                 row["error"] = "already_has_knowledge"
             queue_rows[qid] = row

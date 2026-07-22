@@ -38,6 +38,10 @@ def main() -> None:
         counts["collection_queue"] = scalar(conn, "select count(*) from collection_queue")
     except sqlite3.OperationalError:
         counts["collection_queue"] = 0
+    try:
+        counts["collection_queue_next_stage"] = scalar(conn, "select count(*) from collection_queue_next_stage")
+    except sqlite3.OperationalError:
+        counts["collection_queue_next_stage"] = 0
 
     report = {
         "database": str(DB_PATH.relative_to(ROOT)).replace("\\", "/"),
